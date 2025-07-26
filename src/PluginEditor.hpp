@@ -2,9 +2,11 @@
 
 #include "PluginProcessor.hpp"
 #include "WaveformComponent.hpp"
+#include "ADSRComponent.hpp"
 
 //==============================================================================
-class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor {
+class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                          public juce::AudioProcessorValueTreeState::Listener {
   public:
     explicit AvSynthAudioProcessorEditor(AvSynthAudioProcessor &);
     ~AvSynthAudioProcessorEditor() override;
@@ -13,13 +15,24 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor {
     void paint(juce::Graphics &) override;
     void resized() override;
 
+    // AudioProcessorValueTreeState::Listener
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
+
   private:
     std::vector<juce::Component *> GetComps();
+    void setupADSRComponent();
 
   private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     AvSynthAudioProcessor &processorRef;
+
+    juce::Label gainLabel;
+    juce::Label frequencyLabel;
+    juce::Label oscTypeLabel;
+    juce::Label lowCutFreqLabel;
+    juce::Label highCutFreqLabel;
+    juce::Label adsrLabel;
 
     juce::Slider gainSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment gainAttachment;
@@ -31,6 +44,10 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor {
     juce::AudioProcessorValueTreeState::SliderAttachment lowCutFreqAttachment;
     juce::Slider highCutFreqSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment highCutFreqAttachment;
+
+    // ADSR Component
+    ADSRComponent adsrComponent;
+
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;
 

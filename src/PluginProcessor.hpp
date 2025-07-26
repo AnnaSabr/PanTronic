@@ -9,7 +9,11 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     friend class AvSynthAudioProcessorEditor;
 
   public:
-    enum class Parameters { Gain, Frequency, OscType, LowPassFreq, HighPassFreq, NumParameters };
+    enum class Parameters {
+        Gain, Frequency, OscType, LowPassFreq, HighPassFreq,
+        Attack, Decay, Sustain, Release,
+        NumParameters
+    };
     enum class OscType { Sine, Square, Saw, Triangle, NumTypes };
 
     struct ChainSettings {
@@ -18,6 +22,10 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
         OscType oscType = OscType::Sine;
         float LowPassFreq = 20000.0f;
         float HighPassFreq = 20.0f;
+        float attack = 0.1f;
+        float decay = 0.1f;
+        float sustain = 0.7f;
+        float release = 0.3f;
 
         static forcedinline ChainSettings Get(const juce::AudioProcessorValueTreeState &parameters);
     };
@@ -88,6 +96,11 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     MonoChain leftChain, rightChain;
 
     double currentAngle = 0.0, angleDelta = 0.0;
+
+    // ADSR Envelope
+    juce::ADSR adsr;
+    juce::ADSR::Parameters adsrParams;
+    bool noteIsOn = false;
 
   private:
     //==============================================================================

@@ -1,5 +1,6 @@
 #include "PluginEditor.hpp"
 #include "PluginProcessor.hpp"
+#include "ADSRComponent.hpp"
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -31,7 +32,6 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
     juce::ignoreUnused(processorRef);
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-
     auto *oscTypeParam = dynamic_cast<juce::AudioParameterChoice *>(
         p.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::OscType>().data()));
 
@@ -44,14 +44,74 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
         oscTypeComboBox.setSelectedId(oscTypeParam->getIndex() + 1, juce::dontSendNotification);
     }
 
+    // ADSR Component Setup
+    setupADSRComponent();
+
     for (const auto component : GetComps()) {
         addAndMakeVisible(component);
     }
-    setSize(400, 300);
+    setSize(600, 700);
     setResizable(true, true);
 }
 
-AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {}
+void AvSynthAudioProcessorEditor::setupADSRComponent() {
+    // Initiale Werte aus den Parametern laden
+    auto attackParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data());
+    auto decayParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data());
+    auto sustainParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Sustain>().data());
+    auto releaseParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data());
+
+    if (attackParam) adsrComponent.setAttack(attackParam->getValue());
+    if (decayParam) adsrComponent.setDecay(decayParam->getValue());
+    if (sustainParam) adsrComponent.setSustain(sustainParam->getValue());
+    if (releaseParam) adsrComponent.setRelease(releaseParam->getValue());
+
+    // Callback für Parameter-Änderungen
+    adsrComponent.onParameterChanged = [this](float attack, float decay, float sustain, float release) {
+        // Parameter im AudioProcessor aktualisieren
+        auto* attackParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data());
+        auto* decayParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data());
+        auto* sustainParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Sustain>().data());
+        auto* releaseParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data());
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(attackParam)) {
+            // Attack: 0.001s - 5s (logarithmisch skaliert)
+            float scaledAttack = 0.001f + attack * attack * 4.999f; // Quadratische Skalierung für bessere Kontrolle
+            floatParam->setValueNotifyingHost(floatParam->convertTo0to1(scaledAttack));
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(decayParam)) {
+            // Decay: 0.001s - 5s
+            float scaledDecay = 0.001f + decay * decay * 4.999f;
+            floatParam->setValueNotifyingHost(floatParam->convertTo0to1(scaledDecay));
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(sustainParam)) {
+            // Sustain: 0.0 - 1.0 (linear)
+            floatParam->setValueNotifyingHost(sustain);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(releaseParam)) {
+            // Release: 0.001s - 5s
+            float scaledRelease = 0.001f + release * release * 4.999f;
+            floatParam->setValueNotifyingHost(floatParam->convertTo0to1(scaledRelease));
+        }
+    };
+
+    // Parameter-Listener hinzufügen um die ADSR-Component zu aktualisieren
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Sustain>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data(), this);
+}
+
+AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
+    // Parameter-Listener entfernen
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Sustain>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data(), this);
+}
 
 //==============================================================================
 void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
@@ -63,25 +123,82 @@ void AvSynthAudioProcessorEditor::resized() {
     // This is generally where you'll want to lay out the positions of any
     // subcomponents in your editor..
 
+    // Labels beschriften
+    gainLabel.setText("Gain", juce::dontSendNotification);
+    gainLabel.attachToComponent(&gainSlider, true);
+
+    frequencyLabel.setText("Frequenz", juce::dontSendNotification);
+    frequencyLabel.attachToComponent(&frequencySlider, true);
+
+    oscTypeLabel.setText("Oszillator", juce::dontSendNotification);
+    oscTypeLabel.attachToComponent(&oscTypeComboBox, true);
+
+    lowCutFreqLabel.setText("Low Pass", juce::dontSendNotification);
+    lowCutFreqLabel.attachToComponent(&lowCutFreqSlider, true);
+
+    highCutFreqLabel.setText("High Pass", juce::dontSendNotification);
+    highCutFreqLabel.attachToComponent(&highCutFreqSlider, true);
+
+    adsrLabel.setText("ADSR Envelope", juce::dontSendNotification);
+    adsrLabel.attachToComponent(&adsrComponent, true);
+
     auto bounds = getLocalBounds().reduced(10);
+
+    // Main controls
     auto gainSliderArea = bounds.removeFromTop(40);
     auto frequencySliderArea = bounds.removeFromTop(40);
     auto oscTypeComboBoxArea = bounds.removeFromTop(40);
     auto lowCutFreqArea = bounds.removeFromTop(40);
     auto highCutFreqArea = bounds.removeFromTop(40);
-    auto keyboardArea = bounds.removeFromTop(80);
-    auto waveformArea = bounds.removeFromTop(bounds.getHeight() - 40);
 
+    // ADSR Section
+    auto adsrArea = bounds.removeFromTop(170); // Platz für ADSR Component + Label
+
+    // Keyboard and waveform
+    auto keyboardArea = bounds.removeFromTop(80);
+    auto waveformArea = bounds;
+
+    // Set bounds for all components
     gainSlider.setBounds(gainSliderArea);
     frequencySlider.setBounds(frequencySliderArea);
     oscTypeComboBox.setBounds(oscTypeComboBoxArea);
     lowCutFreqSlider.setBounds(lowCutFreqArea);
     highCutFreqSlider.setBounds(highCutFreqArea);
+
+    // ADSR component
+    adsrComponent.setBounds(adsrArea);
+
     keyboardComponent.setBounds(keyboardArea);
     waveformComponent.setBounds(waveformArea);
 }
 
+//Hier werden alle Komponenten für die GUI hinzugefügt
 std::vector<juce::Component *> AvSynthAudioProcessorEditor::GetComps() {
-    return {&waveformComponent, &gainSlider,        &frequencySlider,  &oscTypeComboBox,
-            &lowCutFreqSlider,  &highCutFreqSlider, &keyboardComponent};
+    return {&waveformComponent, &gainLabel, &gainSlider, &frequencySlider, &oscTypeComboBox,
+            &lowCutFreqSlider, &highCutFreqSlider, &keyboardComponent, &highCutFreqLabel,
+            &frequencyLabel, &oscTypeLabel, &lowCutFreqLabel, &adsrComponent, &adsrLabel};
+}
+
+// AudioProcessorValueTreeState::Listener implementation
+void AvSynthAudioProcessorEditor::parameterChanged(const juce::String& parameterID, float newValue) {
+    // ADSR Component basierend auf Parameter-Änderungen aktualisieren
+    if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data()) {
+        // Rück-Skalierung von Parameter-Wert zu normalisierten Wert (0-1)
+        float normalizedValue = juce::jmap(newValue, 0.001f, 5.0f, 0.0f, 1.0f);
+        normalizedValue = std::sqrt(juce::jlimit(0.0f, 1.0f, normalizedValue)); // Rückgängig quadratische Skalierung
+        adsrComponent.setAttack(normalizedValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data()) {
+        float normalizedValue = juce::jmap(newValue, 0.001f, 5.0f, 0.0f, 1.0f);
+        normalizedValue = std::sqrt(juce::jlimit(0.0f, 1.0f, normalizedValue));
+        adsrComponent.setDecay(normalizedValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Sustain>().data()) {
+        adsrComponent.setSustain(newValue); // Sustain ist bereits linear 0-1
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data()) {
+        float normalizedValue = juce::jmap(newValue, 0.001f, 5.0f, 0.0f, 1.0f);
+        normalizedValue = std::sqrt(juce::jlimit(0.0f, 1.0f, normalizedValue));
+        adsrComponent.setRelease(normalizedValue);
+    }
 }

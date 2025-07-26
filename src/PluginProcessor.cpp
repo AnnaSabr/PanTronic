@@ -1,7 +1,7 @@
 #include "PluginProcessor.hpp"
 #include "PluginEditor.hpp"
 #include "Utils.hpp"
-#include "magic_enum/magic_enum.hpp"
+#include <magic_enum/magic_enum.hpp>
 
 /**
  * @brief Retrieves the current parameter values from the ValueTreeState
@@ -19,6 +19,12 @@ AvSynthAudioProcessor::ChainSettings::Get(const juce::AudioProcessorValueTreeSta
         static_cast<int>(parameters.getRawParameterValue(magic_enum::enum_name<Parameters::OscType>().data())->load()));
     settings.LowPassFreq = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::LowPassFreq>().data())->load();
     settings.HighPassFreq = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::HighPassFreq>().data())->load();
+
+    // Load ADSR parameters
+    settings.attack = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Attack>().data())->load();
+    settings.decay = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Decay>().data())->load();
+    settings.sustain = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Sustain>().data())->load();
+    settings.release = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Release>().data())->load();
 
     return settings;
 }
@@ -103,6 +109,9 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
 
     updateLowPassCoefficients(previousChainSettings.LowPassFreq);
     updateHighPassCoefficients(previousChainSettings.HighPassFreq);
+
+    // Initialize ADSR
+    adsr.setSampleRate(sampleRate);
 }
 
 void AvSynthAudioProcessor::releaseResources() {
@@ -148,7 +157,17 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     // Merge keyboardComponent MIDI events into midiMessages
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
 
-    // If there is a MIDI message, process it and set the frequency to the value in the message
+    // Get current parameter values
+    const auto chainSettings = ChainSettings::Get(parameters);
+
+    // Update ADSR parameters if they have changed
+    adsrParams.attack = chainSettings.attack;
+    adsrParams.decay = chainSettings.decay;
+    adsrParams.sustain = chainSettings.sustain;
+    adsrParams.release = chainSettings.release;
+    adsr.setParameters(adsrParams);
+
+    // Process MIDI messages
     if (!midiMessages.isEmpty()) {
         for (const auto &message : midiMessages) {
             if (message.getMessage().isNoteOn()) {
@@ -161,13 +180,19 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
                     float normValue = floatParam->convertTo0to1(frequency);
                     floatParam->setValueNotifyingHost(normValue);
                 }
+
+                // Trigger ADSR note on
+                adsr.noteOn();
+                noteIsOn = true;
                 break;
+            }
+            else if (message.getMessage().isNoteOff()) {
+                // Trigger ADSR note off
+                adsr.noteOff();
+                noteIsOn = false;
             }
         }
     }
-
-    // Get current parameter values
-    const auto chainSettings = ChainSettings::Get(parameters);
 
     // Check if the frequency has changed since the last process call
     if (!juce::approximatelyEqual(previousChainSettings.frequency, chainSettings.frequency)) {
@@ -180,6 +205,10 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
             currentAngle += angleDelta;
             updateAngleDelta(frequencyRamp.getNext());
 
+            // Apply ADSR envelope
+            float envelopeValue = adsr.getNextSample();
+            currentSample *= envelopeValue;
+
             // Write the current sample to all output channels
             for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
                 buffer.getWritePointer(channel)[sample] = currentSample;
@@ -190,6 +219,11 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
         for (auto sample = 0; sample < buffer.getNumSamples(); ++sample) {
             auto currentSample = getOscSample(chainSettings.oscType, currentAngle);
             currentAngle += angleDelta;
+
+            // Apply ADSR envelope
+            float envelopeValue = adsr.getNextSample();
+            currentSample *= envelopeValue;
+
             // Write the current sample to all output channels
             for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
                 buffer.getWritePointer(channel)[sample] = currentSample;
@@ -338,6 +372,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout AvSynthAudioProcessor::creat
         juce::StringArray{magic_enum::enum_name<OscType::Sine>().data(), magic_enum::enum_name<OscType::Saw>().data(),
                           magic_enum::enum_name<OscType::Square>().data(), magic_enum::enum_name<OscType::Triangle>().data()},
         0));
+
+    // ADSR Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Attack>(
+        juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.1f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Decay>(
+        juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.1f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Sustain>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.7f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Release>(
+        juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.3f));
 
     return layout;
 }
