@@ -19,6 +19,11 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     // AudioProcessorValueTreeState::Listener
     void parameterChanged(const juce::String& parameterID, float newValue) override;
 
+    void loadFlutePreset();         // Kombinierte Methode: ADSR, Filter, Reverb
+    void setFlutePreset();          // Nur ADSR
+    void setFluteFilterPreset();    // Nur Filter
+    void setFluteReverbPreset();    // Nur Reverb
+
   private:
     std::vector<juce::Component *> GetComps();
     void setupADSRComponent();
@@ -53,6 +58,9 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
 
     // Reverb Component
     ReverbComponent reverbComponent;
+
+    // Button for the Flute Preset
+    juce::TextButton flutePresetButton;
 
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;

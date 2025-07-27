@@ -14,7 +14,7 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
         ReverbRoomSize, ReverbDamping, ReverbWetLevel, ReverbDryLevel, ReverbWidth,
         NumParameters
     };
-    enum class OscType { Sine, Square, Saw, Triangle, NumTypes };
+    enum class OscType { Sine, Square, Saw, Triangle, Flute, NumTypes};
 
     struct ChainSettings {
         float gain = 0.25f;
@@ -76,6 +76,7 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     void updateAngleDelta(float frequency);
 
     static float getOscSample(OscType type, double angle);
+    static float getFluteWaveform(double angle);
 
     void updateHighPassCoefficients(float frequency);
     void updateLowPassCoefficients(float frequency);

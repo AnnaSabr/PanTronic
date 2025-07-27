@@ -323,6 +323,22 @@ void AvSynthAudioProcessor::updateAngleDelta(float frequency) {
     angleDelta = cyclesPerSample * juce::MathConstants<double>::twoPi;
 }
 
+float AvSynthAudioProcessor::getFluteWaveform(double angle) {
+    // Grundton (fundamental)
+    float fundamental = static_cast<float>(std::sin(angle));
+
+    // Charakteristische Flöten-Obertöne (hauptsächlich ungerade Harmonische)
+    float harmonic2 = 0.3f * static_cast<float>(std::sin(2.0 * angle));  // Oktave (schwach)
+    float harmonic3 = 0.15f * static_cast<float>(std::sin(3.0 * angle)); // Quinte
+    float harmonic4 = 0.05f * static_cast<float>(std::sin(4.0 * angle)); // Doppel-Oktave (sehr schwach)
+    float harmonic5 = 0.08f * static_cast<float>(std::sin(5.0 * angle)); // Große Terz über Doppel-Oktave
+
+    // Leichte Modulation für "Breath"-Effekt
+    float breathModulation = 1.0f + 0.02f * static_cast<float>(std::sin(angle * 0.1));
+
+    return (fundamental + harmonic2 + harmonic3 + harmonic4 + harmonic5) * breathModulation * 0.8f;
+}
+
 float AvSynthAudioProcessor::getOscSample(OscType type, double angle) {
     switch (type) {
     case OscType::Sine:
@@ -336,10 +352,14 @@ float AvSynthAudioProcessor::getOscSample(OscType type, double angle) {
         return 2.0f * static_cast<float>(std::abs(2.0f * (angle / juce::MathConstants<double>::twoPi -
                                                           std::floor(0.5 + angle / juce::MathConstants<double>::twoPi)))) -
                1.0f;
+    case OscType::Flute:
+        // Flöten-ähnliche Wellenform mit charakteristischen Obertönen
+        return getFluteWaveform(angle);
     default:
         return 0.0f;
     }
 }
+
 void AvSynthAudioProcessor::updateHighPassCoefficients(float frequency) {
     auto highPassCoefficients =
         juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(frequency, getSampleRate(), 4);
