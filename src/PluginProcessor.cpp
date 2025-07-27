@@ -26,6 +26,13 @@ AvSynthAudioProcessor::ChainSettings::Get(const juce::AudioProcessorValueTreeSta
     settings.sustain = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Sustain>().data())->load();
     settings.release = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Release>().data())->load();
 
+    // Load Reverb parameters
+    settings.reverbRoomSize = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbRoomSize>().data())->load();
+    settings.reverbDamping = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDamping>().data())->load();
+    settings.reverbWetLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWetLevel>().data())->load();
+    settings.reverbDryLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDryLevel>().data())->load();
+    settings.reverbWidth = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWidth>().data())->load();
+
     return settings;
 }
 
@@ -107,6 +114,10 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     leftChain.prepare(spec);
     rightChain.prepare(spec);
 
+    // Prepare reverb
+    reverb.prepare(spec);
+    updateReverbParameters(previousChainSettings);
+
     updateLowPassCoefficients(previousChainSettings.LowPassFreq);
     updateHighPassCoefficients(previousChainSettings.HighPassFreq);
 
@@ -166,6 +177,9 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     adsrParams.sustain = chainSettings.sustain;
     adsrParams.release = chainSettings.release;
     adsr.setParameters(adsrParams);
+
+    // Update reverb parameters
+    updateReverbParameters(chainSettings);
 
     // Process MIDI messages
     if (!midiMessages.isEmpty()) {
@@ -245,6 +259,10 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
 
     leftChain.process(leftContext);
     rightChain.process(rightContext);
+
+    // Apply reverb effect
+    juce::dsp::ProcessContextReplacing<float> reverbContext(block);
+    reverb.process(reverbContext);
 
     if (juce::approximatelyEqual(chainSettings.gain, previousChainSettings.gain)) {
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
@@ -348,6 +366,17 @@ void AvSynthAudioProcessor::updateLowPassCoefficients(float frequency) {
     *rightLowPass.get<1>().coefficients = *lowPassCoefficients[1];
 }
 
+void AvSynthAudioProcessor::updateReverbParameters(const ChainSettings& settings) {
+    reverbParams.roomSize = settings.reverbRoomSize;
+    reverbParams.damping = settings.reverbDamping;
+    reverbParams.wetLevel = settings.reverbWetLevel;
+    reverbParams.dryLevel = settings.reverbDryLevel;
+    reverbParams.width = settings.reverbWidth;
+    reverbParams.freezeMode = 0.0f; // Keep this at 0 for normal operation
+
+    reverb.setParameters(reverbParams);
+}
+
 template <typename ParamT, AvSynthAudioProcessor::Parameters Param, typename... Args>
 static std::unique_ptr<ParamT> makeParameter(Args &&...args) {
     return std::make_unique<ParamT>(magic_enum::enum_name<Param>().data(), magic_enum::enum_name<Param>().data(),
@@ -385,6 +414,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout AvSynthAudioProcessor::creat
 
     layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Release>(
         juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.3f));
+
+
+    // Reverb Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbRoomSize>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbDamping>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWetLevel>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.33f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbDryLevel>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.4f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWidth>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 1.0f));
 
     return layout;
 }

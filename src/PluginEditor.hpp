@@ -3,6 +3,7 @@
 #include "PluginProcessor.hpp"
 #include "WaveformComponent.hpp"
 #include "ADSRComponent.hpp"
+#include "ReverbComponent.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -21,6 +22,7 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
   private:
     std::vector<juce::Component *> GetComps();
     void setupADSRComponent();
+    void setupReverbComponent();
 
   private:
     // This reference is provided as a quick way for your editor to
@@ -33,6 +35,7 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     juce::Label lowCutFreqLabel;
     juce::Label highCutFreqLabel;
     juce::Label adsrLabel;
+    juce::Label reverbLabel;
 
     juce::Slider gainSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment gainAttachment;
@@ -47,6 +50,9 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
 
     // ADSR Component
     ADSRComponent adsrComponent;
+
+    // Reverb Component
+    ReverbComponent reverbComponent;
 
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;

@@ -1,6 +1,7 @@
 #include "PluginEditor.hpp"
 #include "PluginProcessor.hpp"
 #include "ADSRComponent.hpp"
+#include "ReverbComponent.hpp"
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -47,10 +48,13 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
     // ADSR Component Setup
     setupADSRComponent();
 
+    // Reverb Component Setup
+    setupReverbComponent();
+
     for (const auto component : GetComps()) {
         addAndMakeVisible(component);
     }
-    setSize(600, 700);
+    setSize(800, 900);
     setResizable(true, true);
 }
 
@@ -105,12 +109,70 @@ void AvSynthAudioProcessorEditor::setupADSRComponent() {
     processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data(), this);
 }
 
+void AvSynthAudioProcessorEditor::setupReverbComponent() {
+    // Initiale Werte aus den Parametern laden
+    auto roomSizeParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbRoomSize>().data());
+    auto dampingParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDamping>().data());
+    auto wetLevelParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWetLevel>().data());
+    auto dryLevelParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDryLevel>().data());
+    auto widthParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data());
+
+    if (roomSizeParam) reverbComponent.setRoomSize(roomSizeParam->getValue());
+    if (dampingParam) reverbComponent.setDamping(dampingParam->getValue());
+    if (wetLevelParam) reverbComponent.setWetLevel(wetLevelParam->getValue());
+    if (dryLevelParam) reverbComponent.setDryLevel(dryLevelParam->getValue());
+    if (widthParam) reverbComponent.setWidth(widthParam->getValue());
+
+    // Callback für Parameter-Änderungen
+    reverbComponent.onParameterChanged = [this](float roomSize, float damping, float wetLevel, float dryLevel, float width) {
+        // Parameter im AudioProcessor aktualisieren
+        auto* roomSizeParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbRoomSize>().data());
+        auto* dampingParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDamping>().data());
+        auto* wetLevelParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWetLevel>().data());
+        auto* dryLevelParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDryLevel>().data());
+        auto* widthParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data());
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(roomSizeParam)) {
+            floatParam->setValueNotifyingHost(roomSize);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(dampingParam)) {
+            floatParam->setValueNotifyingHost(damping);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(wetLevelParam)) {
+            floatParam->setValueNotifyingHost(wetLevel);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(dryLevelParam)) {
+            floatParam->setValueNotifyingHost(dryLevel);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(widthParam)) {
+            floatParam->setValueNotifyingHost(width);
+        }
+    };
+
+    // Parameter-Listener hinzufügen um die Reverb-Component zu aktualisieren
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbRoomSize>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDamping>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWetLevel>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDryLevel>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data(), this);
+}
+
 AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
     // Parameter-Listener entfernen
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Sustain>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Release>().data(), this);
+
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbRoomSize>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDamping>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWetLevel>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDryLevel>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data(), this);
 }
 
 //==============================================================================
@@ -142,6 +204,9 @@ void AvSynthAudioProcessorEditor::resized() {
     adsrLabel.setText("ADSR Envelope", juce::dontSendNotification);
     adsrLabel.attachToComponent(&adsrComponent, true);
 
+    reverbLabel.setText("Reverb", juce::dontSendNotification);
+    reverbLabel.attachToComponent(&reverbComponent, true);
+
     auto bounds = getLocalBounds().reduced(10);
 
     // Main controls
@@ -153,6 +218,9 @@ void AvSynthAudioProcessorEditor::resized() {
 
     // ADSR Section
     auto adsrArea = bounds.removeFromTop(170); // Platz für ADSR Component + Label
+
+    // Reverb Section
+    auto reverbArea = bounds.removeFromTop(180); // Platz für Reverb Component + Label
 
     // Keyboard and waveform
     auto keyboardArea = bounds.removeFromTop(80);
@@ -168,6 +236,9 @@ void AvSynthAudioProcessorEditor::resized() {
     // ADSR component
     adsrComponent.setBounds(adsrArea);
 
+    // Reverb component
+    reverbComponent.setBounds(reverbArea);
+
     keyboardComponent.setBounds(keyboardArea);
     waveformComponent.setBounds(waveformArea);
 }
@@ -176,7 +247,7 @@ void AvSynthAudioProcessorEditor::resized() {
 std::vector<juce::Component *> AvSynthAudioProcessorEditor::GetComps() {
     return {&waveformComponent, &gainLabel, &gainSlider, &frequencySlider, &oscTypeComboBox,
             &lowCutFreqSlider, &highCutFreqSlider, &keyboardComponent, &highCutFreqLabel,
-            &frequencyLabel, &oscTypeLabel, &lowCutFreqLabel, &adsrComponent, &adsrLabel};
+            &frequencyLabel, &oscTypeLabel, &lowCutFreqLabel, &adsrComponent, &adsrLabel, &reverbComponent, &reverbLabel};
 }
 
 // AudioProcessorValueTreeState::Listener implementation
@@ -200,5 +271,21 @@ void AvSynthAudioProcessorEditor::parameterChanged(const juce::String& parameter
         float normalizedValue = juce::jmap(newValue, 0.001f, 5.0f, 0.0f, 1.0f);
         normalizedValue = std::sqrt(juce::jlimit(0.0f, 1.0f, normalizedValue));
         adsrComponent.setRelease(normalizedValue);
+    }
+    // Reverb Component basierend auf Parameter-Änderungen aktualisieren
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbRoomSize>().data()) {
+        reverbComponent.setRoomSize(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDamping>().data()) {
+        reverbComponent.setDamping(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWetLevel>().data()) {
+        reverbComponent.setWetLevel(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDryLevel>().data()) {
+        reverbComponent.setDryLevel(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data()) {
+        reverbComponent.setWidth(newValue);
     }
 }

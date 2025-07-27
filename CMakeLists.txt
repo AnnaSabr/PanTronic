@@ -58,7 +58,8 @@ target_sources(AvSynth
         src/PluginProcessor.cpp
         src/WaveformComponent.cpp
         src/Utils.cpp
-        src/ADSRComponent.cpp)
+        src/ADSRComponent.cpp
+        src/ReverbComponent.cpp)
 
 # Set compile definitions
 target_compile_definitions(AvSynth
