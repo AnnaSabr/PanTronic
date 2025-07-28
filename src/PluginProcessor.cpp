@@ -102,7 +102,7 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     juce::ignoreUnused(sampleRate);
 
     previousChainSettings = ChainSettings::Get(parameters);
-    circularBuffer.setSize(1, samplesPerBlock);
+    circularBuffer.setSize(1, samplesPerBlock * 4);
 
     updateAngleDelta(previousChainSettings.frequency);
 
