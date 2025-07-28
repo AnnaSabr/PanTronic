@@ -26,6 +26,13 @@ AvSynthAudioProcessor::ChainSettings::Get(const juce::AudioProcessorValueTreeSta
     settings.sustain = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Sustain>().data())->load();
     settings.release = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Release>().data())->load();
 
+    // Load Reverb parameters
+    settings.reverbRoomSize = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbRoomSize>().data())->load();
+    settings.reverbDamping = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDamping>().data())->load();
+    settings.reverbWetLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWetLevel>().data())->load();
+    settings.reverbDryLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDryLevel>().data())->load();
+    settings.reverbWidth = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWidth>().data())->load();
+
     return settings;
 }
 
@@ -107,6 +114,10 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     leftChain.prepare(spec);
     rightChain.prepare(spec);
 
+    // Prepare reverb
+    reverb.prepare(spec);
+    updateReverbParameters(previousChainSettings);
+
     updateLowPassCoefficients(previousChainSettings.LowPassFreq);
     updateHighPassCoefficients(previousChainSettings.HighPassFreq);
 
@@ -166,6 +177,9 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     adsrParams.sustain = chainSettings.sustain;
     adsrParams.release = chainSettings.release;
     adsr.setParameters(adsrParams);
+
+    // Update reverb parameters
+    updateReverbParameters(chainSettings);
 
     // Process MIDI messages
     if (!midiMessages.isEmpty()) {
@@ -246,6 +260,10 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     leftChain.process(leftContext);
     rightChain.process(rightContext);
 
+    // Apply reverb effect
+    juce::dsp::ProcessContextReplacing<float> reverbContext(block);
+    reverb.process(reverbContext);
+
     if (juce::approximatelyEqual(chainSettings.gain, previousChainSettings.gain)) {
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
             buffer.applyGain(channel, 0, buffer.getNumSamples(), previousChainSettings.gain);
@@ -305,6 +323,22 @@ void AvSynthAudioProcessor::updateAngleDelta(float frequency) {
     angleDelta = cyclesPerSample * juce::MathConstants<double>::twoPi;
 }
 
+float AvSynthAudioProcessor::getFluteWaveform(double angle) {
+    // Grundton (fundamental)
+    float fundamental = static_cast<float>(std::sin(angle));
+
+    // Charakteristische Flöten-Obertöne (hauptsächlich ungerade Harmonische)
+    float harmonic2 = 0.3f * static_cast<float>(std::sin(2.0 * angle));  // Oktave (schwach)
+    float harmonic3 = 0.15f * static_cast<float>(std::sin(3.0 * angle)); // Quinte
+    float harmonic4 = 0.05f * static_cast<float>(std::sin(4.0 * angle)); // Doppel-Oktave (sehr schwach)
+    float harmonic5 = 0.08f * static_cast<float>(std::sin(5.0 * angle)); // Große Terz über Doppel-Oktave
+
+    // Leichte Modulation für "Breath"-Effekt
+    float breathModulation = 1.0f + 0.02f * static_cast<float>(std::sin(angle * 0.1));
+
+    return (fundamental + harmonic2 + harmonic3 + harmonic4 + harmonic5) * breathModulation * 0.8f;
+}
+
 float AvSynthAudioProcessor::getOscSample(OscType type, double angle) {
     switch (type) {
     case OscType::Sine:
@@ -318,10 +352,14 @@ float AvSynthAudioProcessor::getOscSample(OscType type, double angle) {
         return 2.0f * static_cast<float>(std::abs(2.0f * (angle / juce::MathConstants<double>::twoPi -
                                                           std::floor(0.5 + angle / juce::MathConstants<double>::twoPi)))) -
                1.0f;
+    case OscType::Flute:
+        // Flöten-ähnliche Wellenform mit charakteristischen Obertönen
+        return getFluteWaveform(angle);
     default:
         return 0.0f;
     }
 }
+
 void AvSynthAudioProcessor::updateHighPassCoefficients(float frequency) {
     auto highPassCoefficients =
         juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(frequency, getSampleRate(), 4);
@@ -346,6 +384,17 @@ void AvSynthAudioProcessor::updateLowPassCoefficients(float frequency) {
     auto &rightLowPass = rightChain.get<1>();
     *rightLowPass.get<0>().coefficients = *lowPassCoefficients[0];
     *rightLowPass.get<1>().coefficients = *lowPassCoefficients[1];
+}
+
+void AvSynthAudioProcessor::updateReverbParameters(const ChainSettings& settings) {
+    reverbParams.roomSize = settings.reverbRoomSize;
+    reverbParams.damping = settings.reverbDamping;
+    reverbParams.wetLevel = settings.reverbWetLevel;
+    reverbParams.dryLevel = settings.reverbDryLevel;
+    reverbParams.width = settings.reverbWidth;
+    reverbParams.freezeMode = 0.0f; // Keep this at 0 for normal operation
+
+    reverb.setParameters(reverbParams);
 }
 
 template <typename ParamT, AvSynthAudioProcessor::Parameters Param, typename... Args>
@@ -385,6 +434,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout AvSynthAudioProcessor::creat
 
     layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Release>(
         juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.3f));
+
+
+    // Reverb Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbRoomSize>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbDamping>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWetLevel>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.33f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbDryLevel>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.4f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWidth>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 1.0f));
 
     return layout;
 }

@@ -2,7 +2,6 @@
 
 #include "JuceHeader.h"
 #include "juce_dsp/juce_dsp.h"
-#include "juce_graphics/fonts/harfbuzz/OT/Layout/GSUB/AlternateSet.hh"
 
 //==============================================================================
 class AvSynthAudioProcessor final : public juce::AudioProcessor {
@@ -12,9 +11,10 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     enum class Parameters {
         Gain, Frequency, OscType, LowPassFreq, HighPassFreq,
         Attack, Decay, Sustain, Release,
+        ReverbRoomSize, ReverbDamping, ReverbWetLevel, ReverbDryLevel, ReverbWidth,
         NumParameters
     };
-    enum class OscType { Sine, Square, Saw, Triangle, NumTypes };
+    enum class OscType { Sine, Square, Saw, Triangle, Flute, NumTypes};
 
     struct ChainSettings {
         float gain = 0.25f;
@@ -26,6 +26,12 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
         float decay = 0.1f;
         float sustain = 0.7f;
         float release = 0.3f;
+        //Reverb parameters
+        float reverbRoomSize = 0.5f;
+        float reverbDamping = 0.5f;
+        float reverbWetLevel = 0.33f;
+        float reverbDryLevel = 0.4f;
+        float reverbWidth = 1.0f;
 
         static forcedinline ChainSettings Get(const juce::AudioProcessorValueTreeState &parameters);
     };
@@ -70,9 +76,11 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     void updateAngleDelta(float frequency);
 
     static float getOscSample(OscType type, double angle);
+    static float getFluteWaveform(double angle);
 
     void updateHighPassCoefficients(float frequency);
     void updateLowPassCoefficients(float frequency);
+    void updateReverbParameters(const ChainSettings& settings);
 
   private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -101,6 +109,10 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     juce::ADSR adsr;
     juce::ADSR::Parameters adsrParams;
     bool noteIsOn = false;
+
+    // Reverb
+    juce::dsp::Reverb reverb;
+    juce::dsp::Reverb::Parameters reverbParams;
 
   private:
     //==============================================================================

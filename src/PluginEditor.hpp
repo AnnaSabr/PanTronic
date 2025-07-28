@@ -3,6 +3,7 @@
 #include "PluginProcessor.hpp"
 #include "WaveformComponent.hpp"
 #include "ADSRComponent.hpp"
+#include "ReverbComponent.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -18,9 +19,15 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     // AudioProcessorValueTreeState::Listener
     void parameterChanged(const juce::String& parameterID, float newValue) override;
 
+    void loadFlutePreset();         // Kombinierte Methode: ADSR, Filter, Reverb
+    void setFlutePreset();          // Nur ADSR
+    void setFluteFilterPreset();    // Nur Filter
+    void setFluteReverbPreset();    // Nur Reverb
+
   private:
     std::vector<juce::Component *> GetComps();
     void setupADSRComponent();
+    void setupReverbComponent();
 
   private:
     // This reference is provided as a quick way for your editor to
@@ -33,6 +40,7 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     juce::Label lowCutFreqLabel;
     juce::Label highCutFreqLabel;
     juce::Label adsrLabel;
+    juce::Label reverbLabel;
 
     juce::Slider gainSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment gainAttachment;
@@ -47,6 +55,12 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
 
     // ADSR Component
     ADSRComponent adsrComponent;
+
+    // Reverb Component
+    ReverbComponent reverbComponent;
+
+    // Button for the Flute Preset
+    juce::TextButton flutePresetButton;
 
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;
