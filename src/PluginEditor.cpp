@@ -29,7 +29,9 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
 
       keyboardComponent(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard),
 
-      waveformComponent(p.circularBuffer, p.bufferWritePos) {
+      waveformComponent(p.circularBuffer, p.bufferWritePos),
+      spectrumComponent(p.circularBuffer, p.bufferWritePos){
+
     juce::ignoreUnused(processorRef);
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
@@ -200,6 +202,9 @@ void AvSynthAudioProcessorEditor::resized() {
     oscTypeLabel.setText("Oszillator", juce::dontSendNotification);
     oscTypeLabel.attachToComponent(&oscTypeComboBox, true);
 
+    spectrumLabel.setText("Frequency Spectrum", juce::dontSendNotification);
+    spectrumLabel.attachToComponent(&spectrumComponent, true);
+
     lowCutFreqLabel.setText("Low Pass", juce::dontSendNotification);
     lowCutFreqLabel.attachToComponent(&lowCutFreqSlider, true);
 
@@ -233,7 +238,11 @@ void AvSynthAudioProcessorEditor::resized() {
 
     // Keyboard and waveform
     auto keyboardArea = bounds.removeFromTop(80);
-    auto waveformArea = bounds;
+    //auto waveformArea = bounds;
+
+    auto visualizationArea = bounds;
+    auto waveformArea = visualizationArea.removeFromTop(visualizationArea.getHeight() / 2);
+    auto spectrumArea = visualizationArea;  // Rest für Spektrum
 
     // Set bounds for all components
     gainSlider.setBounds(gainSliderArea);
@@ -252,12 +261,13 @@ void AvSynthAudioProcessorEditor::resized() {
 
     keyboardComponent.setBounds(keyboardArea);
     waveformComponent.setBounds(waveformArea);
+    spectrumComponent.setBounds(spectrumArea);
 }
 
 
 //Hier werden alle Komponenten für die GUI hinzugefügt
 std::vector<juce::Component *> AvSynthAudioProcessorEditor::GetComps() {
-    return {&waveformComponent, &gainLabel, &gainSlider, &frequencySlider, &oscTypeComboBox,
+    return {&waveformComponent, &spectrumComponent, &spectrumLabel, &gainLabel, &gainSlider, &frequencySlider, &oscTypeComboBox,
             &lowCutFreqSlider, &highCutFreqSlider, &keyboardComponent, &highCutFreqLabel,
             &frequencyLabel, &oscTypeLabel, &lowCutFreqLabel, &adsrComponent, &adsrLabel, &reverbComponent, &reverbLabel, &flutePresetButton};
 }
