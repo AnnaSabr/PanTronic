@@ -1,10 +1,11 @@
 #pragma once
 
-#include "PluginProcessor.hpp"
-#include "WaveformComponent.hpp"
 #include "ADSRComponent.hpp"
+#include "ChorusComponent.hpp"
+#include "PluginProcessor.hpp"
 #include "ReverbComponent.hpp"
 #include "SpectrumComponent.hpp"
+#include "WaveformComponent.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -44,6 +45,8 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     juce::Label adsrLabel;
     juce::Label reverbLabel;
 
+    juce::Label chorusLabel;
+
     juce::Label spectrumLabel;
 
     juce::Slider gainSlider;
@@ -57,11 +60,18 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     juce::Slider highCutFreqSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment highCutFreqAttachment;
 
+
+    void setupChorusComponent();
+
     // ADSR Component
     ADSRComponent adsrComponent;
 
+    // Chorus Component
+    ChorusComponent chorusComponent;
+
     // Reverb Component
     ReverbComponent reverbComponent;
+
 
     // Button for the Flute Preset
     juce::TextButton flutePresetButton;

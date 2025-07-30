@@ -60,7 +60,9 @@ target_sources(AvSynth
         src/Utils.cpp
         src/ADSRComponent.cpp
         src/ReverbComponent.cpp
-        src/SpectrumComponent.cpp)
+        src/SpectrumComponent.cpp
+        src/ChorusComponent.cpp
+        src/ChorusEffect.cpp)
 
 # Set compile definitions
 target_compile_definitions(AvSynth

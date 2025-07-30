@@ -2,6 +2,7 @@
 
 #include "JuceHeader.h"
 #include "juce_dsp/juce_dsp.h"
+#include "ChorusEffect.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessor final : public juce::AudioProcessor {
@@ -12,6 +13,7 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
         Gain, Frequency, OscType, LowPassFreq, HighPassFreq,
         Attack, Decay, Sustain, Release,
         ReverbRoomSize, ReverbDamping, ReverbWetLevel, ReverbDryLevel, ReverbWidth,
+        ChorusRate, ChorusDepth, ChorusFeedback, ChorusMix,
         NumParameters
     };
     enum class OscType { Sine, Square, Saw, Triangle, Flute, NumTypes};
@@ -32,6 +34,12 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
         float reverbWetLevel = 0.33f;
         float reverbDryLevel = 0.4f;
         float reverbWidth = 1.0f;
+
+        // Chorus parameters
+        float chorusRate = 0.5f;
+        float chorusDepth = 0.5f;
+        float chorusFeedback = 0.3f;
+        float chorusMix = 0.5f;
 
         static forcedinline ChainSettings Get(const juce::AudioProcessorValueTreeState &parameters);
     };
@@ -81,6 +89,7 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     void updateHighPassCoefficients(float frequency);
     void updateLowPassCoefficients(float frequency);
     void updateReverbParameters(const ChainSettings& settings);
+    void updateChorusParameters(const ChainSettings& settings);  // Add this declaration
 
   private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -113,6 +122,9 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     // Reverb
     juce::dsp::Reverb reverb;
     juce::dsp::Reverb::Parameters reverbParams;
+
+    // Chorus Effect - Add this member variable
+    ChorusEffect chorus;
 
   private:
     //==============================================================================
