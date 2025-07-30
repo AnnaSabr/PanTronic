@@ -2,6 +2,7 @@
 #include "PluginEditor.hpp"
 #include "Utils.hpp"
 #include <magic_enum/magic_enum.hpp>
+#include "ChorusEffect.hpp"
 
 /**
  * @brief Retrieves the current parameter values from the ValueTreeState
@@ -32,6 +33,12 @@ AvSynthAudioProcessor::ChainSettings::Get(const juce::AudioProcessorValueTreeSta
     settings.reverbWetLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWetLevel>().data())->load();
     settings.reverbDryLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDryLevel>().data())->load();
     settings.reverbWidth = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWidth>().data())->load();
+
+    // Load Chorus parameters
+    settings.chorusRate = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusRate>().data())->load();
+    settings.chorusDepth = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusDepth>().data())->load();
+    settings.chorusFeedback = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusFeedback>().data())->load();
+    settings.chorusMix = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusMix>().data())->load();
 
     return settings;
 }
@@ -123,6 +130,10 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
 
     // Initialize ADSR
     adsr.setSampleRate(sampleRate);
+
+    // Initialize Chorus
+    chorus.prepare(spec);
+    updateChorusParameters(previousChainSettings);
 }
 
 void AvSynthAudioProcessor::releaseResources() {
@@ -260,6 +271,11 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     leftChain.process(leftContext);
     rightChain.process(rightContext);
 
+    // Update Chorus parameters if they have changed
+    updateChorusParameters(chainSettings);
+    // Apply Chorus effect
+    chorus.processBlock(buffer);
+
     // Apply reverb effect
     juce::dsp::ProcessContextReplacing<float> reverbContext(block);
     reverb.process(reverbContext);
@@ -386,6 +402,13 @@ void AvSynthAudioProcessor::updateLowPassCoefficients(float frequency) {
     *rightLowPass.get<1>().coefficients = *lowPassCoefficients[1];
 }
 
+void AvSynthAudioProcessor::updateChorusParameters(const ChainSettings& settings) {
+    chorus.setRate(settings.chorusRate);
+    chorus.setDepth(settings.chorusDepth);
+    chorus.setFeedback(settings.chorusFeedback);
+    chorus.setMix(settings.chorusMix);
+}
+
 void AvSynthAudioProcessor::updateReverbParameters(const ChainSettings& settings) {
     reverbParams.roomSize = settings.reverbRoomSize;
     reverbParams.damping = settings.reverbDamping;
@@ -435,7 +458,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout AvSynthAudioProcessor::creat
     layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Release>(
         juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.3f));
 
-
     // Reverb Parameters
     layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbRoomSize>(
         juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
@@ -451,6 +473,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout AvSynthAudioProcessor::creat
 
     layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWidth>(
         juce::NormalisableRange(0.0f, 1.0f, 0.01f), 1.0f));
+
+    // Chorus Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusRate>(
+        juce::NormalisableRange(0.1f, 10.0f, 0.1f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusDepth>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusFeedback>(
+        juce::NormalisableRange(0.0f, 0.95f, 0.01f), 0.3f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusMix>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
 
     return layout;
 }

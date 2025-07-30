@@ -2,7 +2,7 @@
 #include "PluginProcessor.hpp"
 #include "ADSRComponent.hpp"
 #include "ReverbComponent.hpp"
-
+#include "ChorusComponent.hpp"
 #include <magic_enum/magic_enum.hpp>
 
 //==============================================================================
@@ -50,6 +50,9 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
 
     // ADSR Component Setup
     setupADSRComponent();
+
+    // Chorus Component Setup
+    setupChorusComponent();
 
     // Reverb Component Setup
     setupReverbComponent();
@@ -168,6 +171,50 @@ void AvSynthAudioProcessorEditor::setupReverbComponent() {
     processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data(), this);
 }
 
+void AvSynthAudioProcessorEditor::setupChorusComponent() {
+    // Initiale Werte aus den Parametern laden
+    auto rateParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusRate>().data());
+    auto depthParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusDepth>().data());
+    auto feedbackParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusFeedback>().data());
+    auto mixParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusMix>().data());
+
+    if (rateParam) chorusComponent.setRate(rateParam->getValue());
+    if (depthParam) chorusComponent.setDepth(depthParam->getValue());
+    if (feedbackParam) chorusComponent.setFeedback(feedbackParam->getValue());
+    if (mixParam) chorusComponent.setMix(mixParam->getValue());
+
+    // Callback für Parameter-Änderungen
+    chorusComponent.onParameterChanged = [this](float rate, float depth, float feedback, float mix) {
+        // Parameter im AudioProcessor aktualisieren
+        auto* rateParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusRate>().data());
+        auto* depthParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusDepth>().data());
+        auto* feedbackParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusFeedback>().data());
+        auto* mixParam = processorRef.parameters.getParameter(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusMix>().data());
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(rateParam)) {
+            floatParam->setValueNotifyingHost(floatParam->convertTo0to1(rate));
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(depthParam)) {
+            floatParam->setValueNotifyingHost(depth);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(feedbackParam)) {
+            floatParam->setValueNotifyingHost(feedback);
+        }
+
+        if (auto* floatParam = dynamic_cast<juce::AudioParameterFloat*>(mixParam)) {
+            floatParam->setValueNotifyingHost(mix);
+        }
+    };
+
+    // Parameter-Listener hinzufügen um die Chorus-Component zu aktualisieren
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusRate>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusDepth>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusFeedback>().data(), this);
+    processorRef.parameters.addParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusMix>().data(), this);
+}
+
 AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
     // Parameter-Listener entfernen
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data(), this);
@@ -180,6 +227,12 @@ AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWetLevel>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbDryLevel>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data(), this);
+
+    // Chorus Parameter-Listener entfernen
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusRate>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusDepth>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusFeedback>().data(), this);
+    processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusMix>().data(), this);
 }
 
 //==============================================================================
@@ -217,6 +270,9 @@ void AvSynthAudioProcessorEditor::resized() {
     reverbLabel.setText("Reverb", juce::dontSendNotification);
     reverbLabel.attachToComponent(&reverbComponent, true);
 
+    chorusLabel.setText("Chorus Effect", juce::dontSendNotification);
+    chorusLabel.attachToComponent(&chorusComponent, true);
+
     auto bounds = getLocalBounds().reduced(10);
 
     // Main controls
@@ -229,6 +285,9 @@ void AvSynthAudioProcessorEditor::resized() {
     auto oscTypeComboBoxArea = bounds.removeFromTop(40);
     auto lowCutFreqArea = bounds.removeFromTop(40);
     auto highCutFreqArea = bounds.removeFromTop(40);
+
+    // Chorus Section
+    auto chorusArea = bounds.removeFromTop(120); // Platz für Chorus Component + Label
 
     // ADSR Section
     auto adsrArea = bounds.removeFromTop(170); // Platz für ADSR Component + Label
@@ -253,6 +312,9 @@ void AvSynthAudioProcessorEditor::resized() {
 
     flutePresetButton.setBounds(presetButtonArea.removeFromLeft(120));
 
+    // Chorus component
+    chorusComponent.setBounds(chorusArea);
+
     // ADSR component
     adsrComponent.setBounds(adsrArea);
 
@@ -269,7 +331,7 @@ void AvSynthAudioProcessorEditor::resized() {
 std::vector<juce::Component *> AvSynthAudioProcessorEditor::GetComps() {
     return {&waveformComponent, &spectrumComponent, &spectrumLabel, &gainLabel, &gainSlider, &frequencySlider, &oscTypeComboBox,
             &lowCutFreqSlider, &highCutFreqSlider, &keyboardComponent, &highCutFreqLabel,
-            &frequencyLabel, &oscTypeLabel, &lowCutFreqLabel, &adsrComponent, &adsrLabel, &reverbComponent, &reverbLabel, &flutePresetButton};
+            &frequencyLabel, &oscTypeLabel, &lowCutFreqLabel, &adsrComponent, &adsrLabel, &reverbComponent, &reverbLabel, &flutePresetButton, &chorusComponent, &chorusLabel};
 }
 
 // AudioProcessorValueTreeState::Listener implementation
@@ -309,6 +371,18 @@ void AvSynthAudioProcessorEditor::parameterChanged(const juce::String& parameter
     }
     else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ReverbWidth>().data()) {
         reverbComponent.setWidth(newValue);
+    }// Chorus Component basierend auf Parameter-Änderungen aktualisieren
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusRate>().data()) {
+        chorusComponent.setRate(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusDepth>().data()) {
+        chorusComponent.setDepth(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusFeedback>().data()) {
+        chorusComponent.setFeedback(newValue);
+    }
+    else if (parameterID == magic_enum::enum_name<AvSynthAudioProcessor::Parameters::ChorusMix>().data()) {
+        chorusComponent.setMix(newValue);
     }
 }
 
