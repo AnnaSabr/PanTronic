@@ -242,6 +242,8 @@ void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
 }
 
 void AvSynthAudioProcessorEditor::resized() {
+
+    const int maxSliderWidth = 400;
     // Labels beschriften
     gainLabel.setText("Gain", juce::dontSendNotification);
     gainLabel.attachToComponent(&gainSlider, true);
@@ -296,11 +298,11 @@ void AvSynthAudioProcessorEditor::resized() {
     auto spectrumArea = visualizationArea;  // Rest für Spektrum
 
     // Set bounds for all components
-    gainSlider.setBounds(gainSliderArea);
-    frequencySlider.setBounds(frequencySliderArea);
-    oscTypeComboBox.setBounds(oscTypeComboBoxArea);
-    lowCutFreqSlider.setBounds(lowCutFreqArea);
-    highCutFreqSlider.setBounds(highCutFreqArea);
+    gainSlider.setBounds(gainSliderArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
+    frequencySlider.setBounds(frequencySliderArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
+    oscTypeComboBox.setBounds(oscTypeComboBoxArea.removeFromLeft(std::min(maxSliderWidth, oscTypeComboBoxArea.getWidth())));
+    lowCutFreqSlider.setBounds(lowCutFreqArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
+    highCutFreqSlider.setBounds(highCutFreqArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
 
     flutePresetButton.setBounds(presetButtonArea.removeFromLeft(120));
 
