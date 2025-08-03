@@ -242,9 +242,6 @@ void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
 }
 
 void AvSynthAudioProcessorEditor::resized() {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
-
     // Labels beschriften
     gainLabel.setText("Gain", juce::dontSendNotification);
     gainLabel.attachToComponent(&gainSlider, true);
@@ -276,28 +273,23 @@ void AvSynthAudioProcessorEditor::resized() {
     auto bounds = getLocalBounds().reduced(10);
 
     // Main controls
-
     auto presetButtonArea = bounds.removeFromTop(30);
-
-
     auto gainSliderArea = bounds.removeFromTop(40);
     auto frequencySliderArea = bounds.removeFromTop(40);
     auto oscTypeComboBoxArea = bounds.removeFromTop(40);
     auto lowCutFreqArea = bounds.removeFromTop(40);
     auto highCutFreqArea = bounds.removeFromTop(40);
 
-    // Chorus Section
-    auto chorusArea = bounds.removeFromTop(120); // Platz für Chorus Component + Label
-
     // ADSR Section
     auto adsrArea = bounds.removeFromTop(170); // Platz für ADSR Component + Label
 
-    // Reverb Section
-    auto reverbArea = bounds.removeFromTop(200); // Platz für Reverb Component + Label
+    // Effects Section - Chorus und Reverb nebeneinander
+    auto effectsArea = bounds.removeFromTop(200); // Platz für beide Effects + Labels
+    auto chorusArea = effectsArea.removeFromLeft(effectsArea.getWidth() / 2); // Linke Hälfte für Chorus
+    auto reverbArea = effectsArea; // Rechte Hälfte für Reverb
 
     // Keyboard and waveform
     auto keyboardArea = bounds.removeFromTop(80);
-    //auto waveformArea = bounds;
 
     auto visualizationArea = bounds;
     auto waveformArea = visualizationArea.removeFromTop(visualizationArea.getHeight() / 2);
@@ -312,13 +304,11 @@ void AvSynthAudioProcessorEditor::resized() {
 
     flutePresetButton.setBounds(presetButtonArea.removeFromLeft(120));
 
-    // Chorus component
-    chorusComponent.setBounds(chorusArea);
-
     // ADSR component
     adsrComponent.setBounds(adsrArea);
 
-    // Reverb component
+    // Effects components nebeneinander
+    chorusComponent.setBounds(chorusArea);
     reverbComponent.setBounds(reverbArea);
 
     keyboardComponent.setBounds(keyboardArea);

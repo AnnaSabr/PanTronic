@@ -65,15 +65,7 @@ void ADSRComponent::paint(juce::Graphics& g)
     drawControlPoint(decayPoint, currentDragMode == DragMode::Decay);
     drawControlPoint(sustainPoint, currentDragMode == DragMode::Sustain);
     drawControlPoint(releasePoint, currentDragMode == DragMode::Release);
-    
-    // Labels
-    g.setColour(juce::Colours::white);
-    g.setFont(12.0f);
-    
-    g.drawText("A", attackPoint.x - 10, bounds.getBottom() + 5, 20, 15, juce::Justification::centred);
-    g.drawText("D", decayPoint.x - 10, bounds.getBottom() + 5, 20, 15, juce::Justification::centred);
-    g.drawText("S", sustainPoint.x - 10, bounds.getBottom() + 5, 20, 15, juce::Justification::centred);
-    g.drawText("R", releasePoint.x - 10, bounds.getBottom() + 5, 20, 15, juce::Justification::centred);
+
 }
 
 void ADSRComponent::resized()

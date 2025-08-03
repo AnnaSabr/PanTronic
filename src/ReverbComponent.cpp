@@ -2,102 +2,114 @@
 
 ReverbComponent::ReverbComponent()
 {
-    // Room Size Slider Setup
-    roomSizeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    // Room Size Knob Setup
+    roomSizeSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     roomSizeSlider.setRange(0.0, 1.0, 0.01);
     roomSizeSlider.setValue(0.5);
-    roomSizeSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 60, 20);
+    roomSizeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     roomSizeSlider.onValueChange = [this] { parameterChanged(); };
     addAndMakeVisible(roomSizeSlider);
 
     roomSizeLabel.setText("Room Size", juce::dontSendNotification);
-    roomSizeLabel.attachToComponent(&roomSizeSlider, true);
+    roomSizeLabel.setJustificationType(juce::Justification::centred);
+    roomSizeLabel.setFont(12.0f);
     addAndMakeVisible(roomSizeLabel);
 
-    // Damping Slider Setup
-    dampingSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    // Damping Knob Setup
+    dampingSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     dampingSlider.setRange(0.0, 1.0, 0.01);
     dampingSlider.setValue(0.5);
-    dampingSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 60, 20);
+    dampingSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     dampingSlider.onValueChange = [this] { parameterChanged(); };
     addAndMakeVisible(dampingSlider);
 
     dampingLabel.setText("Damping", juce::dontSendNotification);
-    dampingLabel.attachToComponent(&dampingSlider, true);
+    dampingLabel.setJustificationType(juce::Justification::centred);
+    dampingLabel.setFont(12.0f);
     addAndMakeVisible(dampingLabel);
 
-    // Wet Level Slider Setup
-    wetLevelSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    // Wet Level Knob Setup
+    wetLevelSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     wetLevelSlider.setRange(0.0, 1.0, 0.01);
     wetLevelSlider.setValue(0.33);
-    wetLevelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 60, 20);
+    wetLevelSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     wetLevelSlider.onValueChange = [this] { parameterChanged(); };
     addAndMakeVisible(wetLevelSlider);
 
     wetLevelLabel.setText("Wet Level", juce::dontSendNotification);
-    wetLevelLabel.attachToComponent(&wetLevelSlider, true);
+    wetLevelLabel.setJustificationType(juce::Justification::centred);
+    wetLevelLabel.setFont(12.0f);
     addAndMakeVisible(wetLevelLabel);
 
-    // Dry Level Slider Setup
-    dryLevelSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    // Dry Level Knob Setup
+    dryLevelSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     dryLevelSlider.setRange(0.0, 1.0, 0.01);
     dryLevelSlider.setValue(0.4);
-    dryLevelSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 60, 20);
+    dryLevelSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     dryLevelSlider.onValueChange = [this] { parameterChanged(); };
     addAndMakeVisible(dryLevelSlider);
 
     dryLevelLabel.setText("Dry Level", juce::dontSendNotification);
-    dryLevelLabel.attachToComponent(&dryLevelSlider, true);
+    dryLevelLabel.setJustificationType(juce::Justification::centred);
+    dryLevelLabel.setFont(12.0f);
     addAndMakeVisible(dryLevelLabel);
 
-    // Width Slider Setup
-    widthSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    // Width Knob Setup
+    widthSlider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
     widthSlider.setRange(0.0, 1.0, 0.01);
     widthSlider.setValue(1.0);
-    widthSlider.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 60, 20);
+    widthSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     widthSlider.onValueChange = [this] { parameterChanged(); };
     addAndMakeVisible(widthSlider);
 
     widthLabel.setText("Width", juce::dontSendNotification);
-    widthLabel.attachToComponent(&widthSlider, true);
+    widthLabel.setJustificationType(juce::Justification::centred);
+    widthLabel.setFont(12.0f);
     addAndMakeVisible(widthLabel);
 }
 
-ReverbComponent::~ReverbComponent()
-{
+ReverbComponent::~ReverbComponent(){
 }
 
-void ReverbComponent::paint(juce::Graphics& g)
-{
+void ReverbComponent::paint(juce::Graphics& g){
     g.fillAll(juce::Colours::darkgrey.darker());
-
     g.setColour(juce::Colours::white);
     g.setFont(14.0f);
+    g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(2), 5.0f, 2.0f);
     g.drawText("Reverb", getLocalBounds().removeFromTop(20), juce::Justification::centred);
 }
 
 void ReverbComponent::resized()
 {
-    auto bounds = getLocalBounds();
-    bounds.removeFromTop(25); // Space for title
-    bounds.reduce(10, 5);
+    auto bounds = getLocalBounds().reduced(10);
+    bounds.removeFromTop(25);
+    auto sliderWidth = bounds.getWidth() / 5;
+    //auto sliderHeight = bounds.getHeight() - 30; // Space for labels
 
-    const int sliderHeight = 30;
-    const int spacing = 5;
+    // Room Size
+    auto roomSizeArea = bounds.removeFromLeft(sliderWidth);
+    roomSizeLabel.setBounds(roomSizeArea.removeFromBottom(20));
+    roomSizeSlider.setBounds(roomSizeArea);
 
-    roomSizeSlider.setBounds(bounds.removeFromTop(sliderHeight));
-    bounds.removeFromTop(spacing);
+    // Damping
+    auto dampingArea = bounds.removeFromLeft(sliderWidth);
+    dampingLabel.setBounds(dampingArea.removeFromBottom(20));
+    dampingSlider.setBounds(dampingArea);
 
-    dampingSlider.setBounds(bounds.removeFromTop(sliderHeight));
-    bounds.removeFromTop(spacing);
+    // Wet Level
+    auto wetLevelArea = bounds.removeFromLeft(sliderWidth);
+    wetLevelLabel.setBounds(wetLevelArea.removeFromBottom(20));
+    wetLevelSlider.setBounds(wetLevelArea);
 
-    wetLevelSlider.setBounds(bounds.removeFromTop(sliderHeight));
-    bounds.removeFromTop(spacing);
+    // Dry Level
+    auto dryLevelArea = bounds.removeFromLeft(sliderWidth);
+    dryLevelLabel.setBounds(dryLevelArea.removeFromBottom(20));
+    dryLevelSlider.setBounds(dryLevelArea);
 
-    dryLevelSlider.setBounds(bounds.removeFromTop(sliderHeight));
-    bounds.removeFromTop(spacing);
-
-    widthSlider.setBounds(bounds.removeFromTop(sliderHeight));
+    // Width
+    auto widthArea = bounds.removeFromLeft(sliderWidth);
+    widthLabel.setBounds(widthArea.removeFromBottom(20));
+    widthSlider.setBounds(widthArea);
 }
 
 void ReverbComponent::setRoomSize(float roomSize)
