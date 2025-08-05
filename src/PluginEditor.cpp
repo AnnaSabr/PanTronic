@@ -330,11 +330,11 @@ void AvSynthAudioProcessorEditor::drawMysticalImage(juce::Graphics& g) {
     if (!mysticalImage.isValid()) return;
 
     // Bildgröße und Position berechnen
-    const int imageWidth = 500;   // Gewünschte Breite
-    const int imageHeight = 350;  // Gewünschte Höhe
+    const int imageWidth = 500;
+    const int imageHeight = 350;
 
-    const int horizontalMargin = 150; // Abstand vom rechten Rand
-    const int verticalMargin = 50;    // Abstand vom oberen Rand
+    const int horizontalMargin = 150;
+    const int verticalMargin = 50;
 
 
     auto imageArea = juce::Rectangle<int>(
@@ -349,37 +349,19 @@ void AvSynthAudioProcessorEditor::drawMysticalImage(juce::Graphics& g) {
 
 }
 
-
-
 void AvSynthAudioProcessorEditor::resized() {
 
     const int maxSliderWidth = 400;
     // Labels beschriften
     gainLabel.setText("Gain", juce::dontSendNotification);
-    gainLabel.attachToComponent(&gainSlider, true);
-
     frequencyLabel.setText("Frequenz", juce::dontSendNotification);
-    frequencyLabel.attachToComponent(&frequencySlider, true);
-
     oscTypeLabel.setText("Oszillator", juce::dontSendNotification);
-    oscTypeLabel.attachToComponent(&oscTypeComboBox, true);
-
     spectrumLabel.setText("Frequency Spectrum", juce::dontSendNotification);
-    spectrumLabel.attachToComponent(&spectrumComponent, true);
-
     lowCutFreqLabel.setText("Low Pass", juce::dontSendNotification);
-    lowCutFreqLabel.attachToComponent(&lowCutFreqSlider, true);
-
     highCutFreqLabel.setText("High Pass", juce::dontSendNotification);
-    highCutFreqLabel.attachToComponent(&highCutFreqSlider, true);
-
     adsrLabel.setText("ADSR Envelope", juce::dontSendNotification);
-    adsrLabel.attachToComponent(&adsrComponent, true);
-
-    reverbLabel.attachToComponent(&reverbComponent, true);
-
     chorusLabel.setText("Chorus Effect", juce::dontSendNotification);
-    chorusLabel.attachToComponent(&chorusComponent, true);
+
 
     auto bounds = getLocalBounds().reduced(10);
 
@@ -398,21 +380,25 @@ void AvSynthAudioProcessorEditor::resized() {
     auto effectsArea = bounds.removeFromTop(200); // Platz für beide Effects + Labels
     auto chorusArea = effectsArea.removeFromLeft(effectsArea.getWidth() / 2); // Linke Hälfte für Chorus
     auto reverbArea = effectsArea; // Rechte Hälfte für Reverb
-
     // Keyboard and waveform
     auto keyboardArea = bounds.removeFromTop(80);
-
     auto visualizationArea = bounds;
     auto waveformArea = visualizationArea.removeFromTop(visualizationArea.getHeight() / 2);
     auto spectrumArea = visualizationArea;  // Rest für Spektrum
 
     // Set bounds for all components
     gainSlider.setBounds(gainSliderArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
+    gainLabel.setBounds(gainSlider.getRight() + 10, gainSlider.getY(),80, gainSlider.getHeight());
     frequencySlider.setBounds(frequencySliderArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
-    oscTypeComboBox.setBounds(oscTypeComboBoxArea.removeFromLeft(std::min(maxSliderWidth, oscTypeComboBoxArea.getWidth())));
-    lowCutFreqSlider.setBounds(lowCutFreqArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
-    highCutFreqSlider.setBounds(highCutFreqArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
+    frequencyLabel.setBounds(frequencySlider.getRight() + 10,frequencySlider.getY(),80,frequencySlider.getHeight());
 
+    oscTypeComboBox.setBounds(oscTypeComboBoxArea.removeFromLeft(std::min(maxSliderWidth, oscTypeComboBoxArea.getWidth())));
+
+    lowCutFreqSlider.setBounds(lowCutFreqArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
+    lowCutFreqLabel.setBounds(lowCutFreqSlider.getRight() + 10,lowCutFreqSlider.getY(),80,lowCutFreqSlider.getHeight());
+
+    highCutFreqSlider.setBounds(highCutFreqArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
+    highCutFreqLabel.setBounds(highCutFreqSlider.getRight() + 10,highCutFreqSlider.getY(),80,highCutFreqSlider.getHeight());
     flutePresetButton.setBounds(presetButtonArea.removeFromLeft(120));
 
     // ADSR component
@@ -585,12 +571,4 @@ void AvSynthAudioProcessorEditor::loadFlutePreset() {
     setFluteFilterPreset();  // Filter
     setFluteReverbPreset();  // Reverb
 }
-
-
-
-
-
-
-
-
 
