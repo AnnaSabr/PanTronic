@@ -62,7 +62,8 @@ target_sources(AvSynth
         src/ReverbComponent.cpp
         src/SpectrumComponent.cpp
         src/ChorusComponent.cpp
-        src/ChorusEffect.cpp)
+        src/ChorusEffect.cpp
+        src/MysticalLookAndFeel.cpp)
 
 # Set compile definitions
 target_compile_definitions(AvSynth

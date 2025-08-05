@@ -6,6 +6,7 @@
 #include "ReverbComponent.hpp"
 #include "SpectrumComponent.hpp"
 #include "WaveformComponent.hpp"
+#include "MysticalLookAndFeel.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -78,6 +79,7 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
 
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;
+    MysticalLookAndFeel mysticalLookAndFeel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AvSynthAudioProcessorEditor)
 };

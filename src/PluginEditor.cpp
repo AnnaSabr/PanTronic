@@ -32,6 +32,8 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
       waveformComponent(p.circularBuffer, p.bufferWritePos),
       spectrumComponent(p.circularBuffer, p.bufferWritePos){
 
+    setLookAndFeel(&mysticalLookAndFeel);
+
     juce::ignoreUnused(processorRef);
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
@@ -46,6 +48,26 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
         }
         oscTypeComboBox.setSelectedId(oscTypeParam->getIndex() + 1, juce::dontSendNotification);
     }
+
+
+
+
+    gainSlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff64b5f6));
+    frequencySlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff64b5f6));
+
+    // Keyboard-Farben anpassen (diese Farben existieren in JUCE)
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xff2d3e54));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff0a0f1c));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff64b5f6).withAlpha(0.3f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, juce::Colour(0xff64b5f6).withAlpha(0.3f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, juce::Colour(0xff4a3472).withAlpha(0.8f));
+
+    // Weitere mystische Anpassungen für das LookAndFeel
+    mysticalLookAndFeel.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xffc5d1de));
+    mysticalLookAndFeel.setColour(juce::MidiKeyboardComponent::shadowColourId, juce::Colour(0xff0a0f1c).withAlpha(0.5f));
+
+
+
 
 
     // ADSR Component Setup
@@ -216,6 +238,8 @@ void AvSynthAudioProcessorEditor::setupChorusComponent() {
 }
 
 AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
+
+    setLookAndFeel(nullptr);
     // Parameter-Listener entfernen
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data(), this);
@@ -237,8 +261,29 @@ AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
 
 //==============================================================================
 void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    // Mystischer Hintergrund mit mehreren Schichten
+    auto area = getLocalBounds().toFloat();
+
+    // Haupthintergrund
+    auto backgroundGradient = juce::ColourGradient(
+        juce::Colour(0xff0a0f1c).darker(0.3f), 0, 0,
+        juce::Colour(0xff2d3e54).darker(0.1f), getWidth(), getHeight(), false);
+    backgroundGradient.addColour(0.3, juce::Colour(0xff4a3472).withAlpha(0.1f));
+    backgroundGradient.addColour(0.7, juce::Colour(0xff0a0f1c).brighter(0.05f));
+
+    g.setGradientFill(backgroundGradient);
+    g.fillAll();
+
+    // Subtile Lichteffekte in den Ecken
+    auto cornerGlow = juce::ColourGradient(
+        juce::Colour(0xff64b5f6).withAlpha(0.05f), area.getTopLeft(),
+        juce::Colours::transparentBlack, area.getCentre(), true);
+
+    g.setGradientFill(cornerGlow);
+    g.fillEllipse(area.getTopLeft().x - 50, area.getTopLeft().y - 50, 100, 100);
+    g.fillEllipse(area.getTopRight().x - 50, area.getTopRight().y - 50, 100, 100);
+    g.fillEllipse(area.getBottomLeft().x - 50, area.getBottomLeft().y - 50, 100, 100);
+    g.fillEllipse(area.getBottomRight().x - 50, area.getBottomRight().y - 50, 100, 100);
 }
 
 void AvSynthAudioProcessorEditor::resized() {
