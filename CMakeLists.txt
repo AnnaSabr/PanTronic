@@ -45,6 +45,11 @@ juce_add_plugin(AvSynth
         FORMATS AU VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
         PRODUCT_NAME "Audio Visual Synthesizer")    # The name of the final executable, which can differ from the target name
 
+juce_add_binary_data(AvSynth_BinaryData
+        SOURCES
+        Resources/Pan.jpg
+)
+
 
 target_include_directories(AvSynth PRIVATE ${magic_enum_SOURCE_DIR}/include)
 
@@ -62,7 +67,8 @@ target_sources(AvSynth
         src/ReverbComponent.cpp
         src/SpectrumComponent.cpp
         src/ChorusComponent.cpp
-        src/ChorusEffect.cpp)
+        src/ChorusEffect.cpp
+        src/MysticalLookAndFeel.cpp)
 
 # Set compile definitions
 target_compile_definitions(AvSynth
@@ -81,6 +87,7 @@ target_link_libraries(AvSynth
         juce::juce_audio_utils
         juce::juce_dsp
         magic_enum::magic_enum
+        AvSynth_BinaryData
         PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

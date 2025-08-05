@@ -32,6 +32,10 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
       waveformComponent(p.circularBuffer, p.bufferWritePos),
       spectrumComponent(p.circularBuffer, p.bufferWritePos){
 
+    setLookAndFeel(&mysticalLookAndFeel);
+    // Mystisches Bild laden
+    loadMysticalImage();
+
     juce::ignoreUnused(processorRef);
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
@@ -47,6 +51,19 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
         oscTypeComboBox.setSelectedId(oscTypeParam->getIndex() + 1, juce::dontSendNotification);
     }
 
+    gainSlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff64b5f6));
+    frequencySlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff64b5f6));
+
+    // Keyboard-Farben anpassen (diese Farben existieren in JUCE)
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xff2d3e54));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff0a0f1c));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff64b5f6).withAlpha(0.3f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, juce::Colour(0xff64b5f6).withAlpha(0.3f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, juce::Colour(0xff4a3472).withAlpha(0.8f));
+
+    // Weitere mystische Anpassungen für das LookAndFeel
+    mysticalLookAndFeel.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xffc5d1de));
+    mysticalLookAndFeel.setColour(juce::MidiKeyboardComponent::shadowColourId, juce::Colour(0xff0a0f1c).withAlpha(0.5f));
 
     // ADSR Component Setup
     setupADSRComponent();
@@ -66,6 +83,47 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
     }
     setSize(800, 900);
     setResizable(true, true);
+}
+
+// Neue Methode zum Laden des Bildes
+void AvSynthAudioProcessorEditor::loadMysticalImage() {
+
+    mysticalImage = juce::ImageCache::getFromMemory(BinaryData::Pan_jpg,
+                                                   BinaryData::Pan_jpgSize);
+
+    if (!mysticalImage.isValid()) {
+        juce::File imageFile = juce::File::getCurrentWorkingDirectory()
+                              .getChildFile("..")
+                              .getChildFile("Resources")
+                              .getChildFile("Pan.jpg");
+
+        if (imageFile.existsAsFile()) {
+            mysticalImage = juce::ImageFileFormat::loadFrom(imageFile);
+        }
+    }
+    // Option 3: Fallback - einfarbiges Bild wenn Laden fehlschlägt
+    if (!mysticalImage.isValid()) {
+        // Erstelle ein einfaches Placeholder-Bild mit mystischen Farben
+        mysticalImage = juce::Image(juce::Image::ARGB, 200, 150, true);
+        juce::Graphics g(mysticalImage);
+
+        // Mystischer Verlauf als Fallback
+        auto gradient = juce::ColourGradient(
+            juce::Colour(0xff4a3472), 0, 0,
+            juce::Colour(0xff0a0f1c), 200, 150,
+            false
+        );
+        gradient.addColour(0.5, juce::Colour(0xff64b5f6).withAlpha(0.3f));
+
+        g.setGradientFill(gradient);
+        g.fillAll();
+
+        // Mystische Silhouette als Platzhalter
+        g.setColour(juce::Colour(0xff1a2332).withAlpha(0.7f));
+        juce::Path mysticalShape;
+        mysticalShape.addEllipse(75, 50, 50, 80);
+        g.fillPath(mysticalShape);
+    }
 }
 
 void AvSynthAudioProcessorEditor::setupADSRComponent() {
@@ -216,6 +274,8 @@ void AvSynthAudioProcessorEditor::setupChorusComponent() {
 }
 
 AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
+
+    setLookAndFeel(nullptr);
     // Parameter-Listener entfernen
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Attack>().data(), this);
     processorRef.parameters.removeParameterListener(magic_enum::enum_name<AvSynthAudioProcessor::Parameters::Decay>().data(), this);
@@ -237,88 +297,115 @@ AvSynthAudioProcessorEditor::~AvSynthAudioProcessorEditor() {
 
 //==============================================================================
 void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
+    // Mystischer Hintergrund mit mehreren Schichten
+    auto area = getLocalBounds().toFloat();
+
+    // Haupthintergrund
+    auto backgroundGradient = juce::ColourGradient(
+        juce::Colour(0xff0a0f1c).darker(0.3f), 0, 0,
+        juce::Colour(0xff2d3e54).darker(0.1f), getWidth(), getHeight(), false);
+    backgroundGradient.addColour(0.3, juce::Colour(0xff4a3472).withAlpha(0.1f));
+    backgroundGradient.addColour(0.7, juce::Colour(0xff0a0f1c).brighter(0.05f));
+
+    g.setGradientFill(backgroundGradient);
+    g.fillAll();
+
+    // Mystisches Bild zeichnen
+    drawMysticalImage(g);
+
+    // Subtile Lichteffekte in den Ecken
+    auto cornerGlow = juce::ColourGradient(
+        juce::Colour(0xff64b5f6).withAlpha(0.05f), area.getTopLeft(),
+        juce::Colours::transparentBlack, area.getCentre(), true);
+
+    g.setGradientFill(cornerGlow);
+    g.fillEllipse(area.getTopLeft().x - 50, area.getTopLeft().y - 50, 100, 100);
+    g.fillEllipse(area.getTopRight().x - 50, area.getTopRight().y - 50, 100, 100);
+    g.fillEllipse(area.getBottomLeft().x - 50, area.getBottomLeft().y - 50, 100, 100);
+    g.fillEllipse(area.getBottomRight().x - 50, area.getBottomRight().y - 50, 100, 100);
+}
+
+// Neue Methode zum Zeichnen des mystischen Bildes
+void AvSynthAudioProcessorEditor::drawMysticalImage(juce::Graphics& g) {
+    if (!mysticalImage.isValid()) return;
+
+    // Bildgröße und Position berechnen
+    const int imageWidth = 500;
+    const int imageHeight = 350;
+
+    const int horizontalMargin = 150;
+    const int verticalMargin = 50;
+
+
+    auto imageArea = juce::Rectangle<int>(
+        getWidth() - imageWidth - horizontalMargin,
+        verticalMargin,
+        imageWidth,
+        imageHeight
+    );
+
+    g.drawImage(mysticalImage, imageArea.toFloat(),
+                juce::RectanglePlacement::centred | juce::RectanglePlacement::fillDestination);
+
 }
 
 void AvSynthAudioProcessorEditor::resized() {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
 
+    const int maxSliderWidth = 400;
     // Labels beschriften
     gainLabel.setText("Gain", juce::dontSendNotification);
-    gainLabel.attachToComponent(&gainSlider, true);
-
     frequencyLabel.setText("Frequenz", juce::dontSendNotification);
-    frequencyLabel.attachToComponent(&frequencySlider, true);
-
     oscTypeLabel.setText("Oszillator", juce::dontSendNotification);
-    oscTypeLabel.attachToComponent(&oscTypeComboBox, true);
-
     spectrumLabel.setText("Frequency Spectrum", juce::dontSendNotification);
-    spectrumLabel.attachToComponent(&spectrumComponent, true);
-
     lowCutFreqLabel.setText("Low Pass", juce::dontSendNotification);
-    lowCutFreqLabel.attachToComponent(&lowCutFreqSlider, true);
-
     highCutFreqLabel.setText("High Pass", juce::dontSendNotification);
-    highCutFreqLabel.attachToComponent(&highCutFreqSlider, true);
-
     adsrLabel.setText("ADSR Envelope", juce::dontSendNotification);
-    adsrLabel.attachToComponent(&adsrComponent, true);
-
-    reverbLabel.setText("Reverb", juce::dontSendNotification);
-    reverbLabel.attachToComponent(&reverbComponent, true);
-
     chorusLabel.setText("Chorus Effect", juce::dontSendNotification);
-    chorusLabel.attachToComponent(&chorusComponent, true);
+
 
     auto bounds = getLocalBounds().reduced(10);
 
     // Main controls
-
     auto presetButtonArea = bounds.removeFromTop(30);
-
-
     auto gainSliderArea = bounds.removeFromTop(40);
     auto frequencySliderArea = bounds.removeFromTop(40);
     auto oscTypeComboBoxArea = bounds.removeFromTop(40);
     auto lowCutFreqArea = bounds.removeFromTop(40);
     auto highCutFreqArea = bounds.removeFromTop(40);
 
-    // Chorus Section
-    auto chorusArea = bounds.removeFromTop(120); // Platz für Chorus Component + Label
-
     // ADSR Section
     auto adsrArea = bounds.removeFromTop(170); // Platz für ADSR Component + Label
 
-    // Reverb Section
-    auto reverbArea = bounds.removeFromTop(200); // Platz für Reverb Component + Label
-
+    // Effects Section - Chorus und Reverb nebeneinander
+    auto effectsArea = bounds.removeFromTop(200); // Platz für beide Effects + Labels
+    auto chorusArea = effectsArea.removeFromLeft(effectsArea.getWidth() / 2); // Linke Hälfte für Chorus
+    auto reverbArea = effectsArea; // Rechte Hälfte für Reverb
     // Keyboard and waveform
     auto keyboardArea = bounds.removeFromTop(80);
-    //auto waveformArea = bounds;
-
     auto visualizationArea = bounds;
     auto waveformArea = visualizationArea.removeFromTop(visualizationArea.getHeight() / 2);
     auto spectrumArea = visualizationArea;  // Rest für Spektrum
 
     // Set bounds for all components
-    gainSlider.setBounds(gainSliderArea);
-    frequencySlider.setBounds(frequencySliderArea);
-    oscTypeComboBox.setBounds(oscTypeComboBoxArea);
-    lowCutFreqSlider.setBounds(lowCutFreqArea);
-    highCutFreqSlider.setBounds(highCutFreqArea);
+    gainSlider.setBounds(gainSliderArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
+    gainLabel.setBounds(gainSlider.getRight() + 10, gainSlider.getY(),80, gainSlider.getHeight());
+    frequencySlider.setBounds(frequencySliderArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
+    frequencyLabel.setBounds(frequencySlider.getRight() + 10,frequencySlider.getY(),80,frequencySlider.getHeight());
 
+    oscTypeComboBox.setBounds(oscTypeComboBoxArea.removeFromLeft(std::min(maxSliderWidth, oscTypeComboBoxArea.getWidth())));
+
+    lowCutFreqSlider.setBounds(lowCutFreqArea.removeFromLeft(std::min(maxSliderWidth, gainSliderArea.getWidth())));
+    lowCutFreqLabel.setBounds(lowCutFreqSlider.getRight() + 10,lowCutFreqSlider.getY(),80,lowCutFreqSlider.getHeight());
+
+    highCutFreqSlider.setBounds(highCutFreqArea.removeFromLeft(std::min(maxSliderWidth, frequencySliderArea.getWidth())));
+    highCutFreqLabel.setBounds(highCutFreqSlider.getRight() + 10,highCutFreqSlider.getY(),80,highCutFreqSlider.getHeight());
     flutePresetButton.setBounds(presetButtonArea.removeFromLeft(120));
-
-    // Chorus component
-    chorusComponent.setBounds(chorusArea);
 
     // ADSR component
     adsrComponent.setBounds(adsrArea);
 
-    // Reverb component
+    // Effects components nebeneinander
+    chorusComponent.setBounds(chorusArea);
     reverbComponent.setBounds(reverbArea);
 
     keyboardComponent.setBounds(keyboardArea);
@@ -484,12 +571,4 @@ void AvSynthAudioProcessorEditor::loadFlutePreset() {
     setFluteFilterPreset();  // Filter
     setFluteReverbPreset();  // Reverb
 }
-
-
-
-
-
-
-
-
 

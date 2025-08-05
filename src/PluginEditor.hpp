@@ -6,6 +6,7 @@
 #include "ReverbComponent.hpp"
 #include "SpectrumComponent.hpp"
 #include "WaveformComponent.hpp"
+#include "MysticalLookAndFeel.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -25,6 +26,10 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     void setFlutePreset();          // Nur ADSR
     void setFluteFilterPreset();    // Nur Filter
     void setFluteReverbPreset();    // Nur Reverb
+
+    // Bild-bezogene Methoden
+    void loadMysticalImage();
+    void drawMysticalImage(juce::Graphics& g);
 
   private:
     std::vector<juce::Component *> GetComps();
@@ -59,6 +64,10 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     juce::AudioProcessorValueTreeState::SliderAttachment lowCutFreqAttachment;
     juce::Slider highCutFreqSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment highCutFreqAttachment;
+
+    // Neuer Member für das mystische Bild
+    juce::Image mysticalImage;
+    MysticalLookAndFeel mysticalLookAndFeel;
 
 
     void setupChorusComponent();
