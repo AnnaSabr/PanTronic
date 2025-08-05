@@ -27,6 +27,10 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     void setFluteFilterPreset();    // Nur Filter
     void setFluteReverbPreset();    // Nur Reverb
 
+    // Bild-bezogene Methoden
+    void loadMysticalImage();
+    void drawMysticalImage(juce::Graphics& g);
+
   private:
     std::vector<juce::Component *> GetComps();
     void setupADSRComponent();
@@ -61,6 +65,10 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
     juce::Slider highCutFreqSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment highCutFreqAttachment;
 
+    // Neuer Member für das mystische Bild
+    juce::Image mysticalImage;
+    MysticalLookAndFeel mysticalLookAndFeel;
+
 
     void setupChorusComponent();
 
@@ -79,7 +87,6 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
 
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;
-    MysticalLookAndFeel mysticalLookAndFeel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AvSynthAudioProcessorEditor)
 };

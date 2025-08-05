@@ -53,8 +53,8 @@ private:
     juce::Point<float> lastMousePos;
     
 
-    juce::Colour primaryColor = juce::Colours::orange;
-    juce::Colour secondaryColor = juce::Colours::darkorange;
+    juce::Colour primaryColor = juce::Colours::darkblue;
+    juce::Colour secondaryColor = juce::Colours::darkblue;
     
 
     juce::Path createADSRPath() const;

@@ -33,6 +33,8 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
       spectrumComponent(p.circularBuffer, p.bufferWritePos){
 
     setLookAndFeel(&mysticalLookAndFeel);
+    // Mystisches Bild laden
+    loadMysticalImage();
 
     juce::ignoreUnused(processorRef);
     // Make sure that before the constructor has finished, you've set the
@@ -49,9 +51,6 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
         oscTypeComboBox.setSelectedId(oscTypeParam->getIndex() + 1, juce::dontSendNotification);
     }
 
-
-
-
     gainSlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff64b5f6));
     frequencySlider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff64b5f6));
 
@@ -65,10 +64,6 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
     // Weitere mystische Anpassungen für das LookAndFeel
     mysticalLookAndFeel.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xffc5d1de));
     mysticalLookAndFeel.setColour(juce::MidiKeyboardComponent::shadowColourId, juce::Colour(0xff0a0f1c).withAlpha(0.5f));
-
-
-
-
 
     // ADSR Component Setup
     setupADSRComponent();
@@ -88,6 +83,47 @@ AvSynthAudioProcessorEditor::AvSynthAudioProcessorEditor(AvSynthAudioProcessor &
     }
     setSize(800, 900);
     setResizable(true, true);
+}
+
+// Neue Methode zum Laden des Bildes
+void AvSynthAudioProcessorEditor::loadMysticalImage() {
+
+    mysticalImage = juce::ImageCache::getFromMemory(BinaryData::Pan_jpg,
+                                                   BinaryData::Pan_jpgSize);
+
+    if (!mysticalImage.isValid()) {
+        juce::File imageFile = juce::File::getCurrentWorkingDirectory()
+                              .getChildFile("..")
+                              .getChildFile("Resources")
+                              .getChildFile("Pan.jpg");
+
+        if (imageFile.existsAsFile()) {
+            mysticalImage = juce::ImageFileFormat::loadFrom(imageFile);
+        }
+    }
+    // Option 3: Fallback - einfarbiges Bild wenn Laden fehlschlägt
+    if (!mysticalImage.isValid()) {
+        // Erstelle ein einfaches Placeholder-Bild mit mystischen Farben
+        mysticalImage = juce::Image(juce::Image::ARGB, 200, 150, true);
+        juce::Graphics g(mysticalImage);
+
+        // Mystischer Verlauf als Fallback
+        auto gradient = juce::ColourGradient(
+            juce::Colour(0xff4a3472), 0, 0,
+            juce::Colour(0xff0a0f1c), 200, 150,
+            false
+        );
+        gradient.addColour(0.5, juce::Colour(0xff64b5f6).withAlpha(0.3f));
+
+        g.setGradientFill(gradient);
+        g.fillAll();
+
+        // Mystische Silhouette als Platzhalter
+        g.setColour(juce::Colour(0xff1a2332).withAlpha(0.7f));
+        juce::Path mysticalShape;
+        mysticalShape.addEllipse(75, 50, 50, 80);
+        g.fillPath(mysticalShape);
+    }
 }
 
 void AvSynthAudioProcessorEditor::setupADSRComponent() {
@@ -274,6 +310,9 @@ void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
     g.setGradientFill(backgroundGradient);
     g.fillAll();
 
+    // Mystisches Bild zeichnen
+    drawMysticalImage(g);
+
     // Subtile Lichteffekte in den Ecken
     auto cornerGlow = juce::ColourGradient(
         juce::Colour(0xff64b5f6).withAlpha(0.05f), area.getTopLeft(),
@@ -285,6 +324,32 @@ void AvSynthAudioProcessorEditor::paint(juce::Graphics &g) {
     g.fillEllipse(area.getBottomLeft().x - 50, area.getBottomLeft().y - 50, 100, 100);
     g.fillEllipse(area.getBottomRight().x - 50, area.getBottomRight().y - 50, 100, 100);
 }
+
+// Neue Methode zum Zeichnen des mystischen Bildes
+void AvSynthAudioProcessorEditor::drawMysticalImage(juce::Graphics& g) {
+    if (!mysticalImage.isValid()) return;
+
+    // Bildgröße und Position berechnen
+    const int imageWidth = 500;   // Gewünschte Breite
+    const int imageHeight = 350;  // Gewünschte Höhe
+
+    const int horizontalMargin = 150; // Abstand vom rechten Rand
+    const int verticalMargin = 50;    // Abstand vom oberen Rand
+
+
+    auto imageArea = juce::Rectangle<int>(
+        getWidth() - imageWidth - horizontalMargin,
+        verticalMargin,
+        imageWidth,
+        imageHeight
+    );
+
+    g.drawImage(mysticalImage, imageArea.toFloat(),
+                juce::RectanglePlacement::centred | juce::RectanglePlacement::fillDestination);
+
+}
+
+
 
 void AvSynthAudioProcessorEditor::resized() {
 
