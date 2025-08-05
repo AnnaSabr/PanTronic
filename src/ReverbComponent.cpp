@@ -71,12 +71,81 @@ ReverbComponent::ReverbComponent()
 ReverbComponent::~ReverbComponent(){
 }
 
-void ReverbComponent::paint(juce::Graphics& g){
-    g.fillAll(juce::Colours::darkgrey.darker());
-    g.setColour(juce::Colours::white);
-    g.setFont(14.0f);
-    g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(2), 5.0f, 2.0f);
-    g.drawText("Reverb", getLocalBounds().removeFromTop(20), juce::Justification::centred);
+void ReverbComponent::paint(juce::Graphics& g) {
+    auto area = getLocalBounds().toFloat();
+    auto headerArea = area.removeFromTop(25);
+    auto contentArea = area.reduced(5);
+
+    // Mystischer Hintergrund mit Verlauf
+    auto backgroundGradient = juce::ColourGradient(
+        juce::Colour(0xff1a2332).brighter(0.1f), 0, 0,           // Mittleres Blau oben
+        juce::Colour(0xff0a0f1c).darker(0.1f), 0, getHeight(),   // Dunkles Blau unten
+        false
+    );
+    // Mystischen Lila-Akzent in der Mitte hinzufügen
+    backgroundGradient.addColour(0.5, juce::Colour(0xff4a3472).withAlpha(0.15f));
+
+    g.setGradientFill(backgroundGradient);
+    g.fillRoundedRectangle(area.reduced(1), 8.0f);
+
+    // Subtiler Glow-Effekt um die gesamte Komponente
+    for (float i = 3.0f; i > 0; i -= 0.5f) {
+        auto alpha = (3.0f - i) / 3.0f * 0.08f;
+        g.setColour(juce::Colour(0xff64b5f6).withAlpha(alpha));
+        g.drawRoundedRectangle(area.expanded(i), 8.0f + i, 1.0f);
+    }
+
+    // Hauptumrandung mit mystischem Glow
+    g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.6f));
+    g.drawRoundedRectangle(area.reduced(1), 8.0f, 1.5f);
+
+    // Header-Bereich mit eigenem Verlauf
+    auto headerGradient = juce::ColourGradient(
+        juce::Colour(0xff4a3472).withAlpha(0.3f), headerArea.getTopLeft(),
+        juce::Colour(0xff64b5f6).withAlpha(0.1f), headerArea.getBottomRight(),
+        false
+    );
+    g.setGradientFill(headerGradient);
+    g.fillRoundedRectangle(headerArea.reduced(1), 6.0f);
+
+    // Header-Umrandung
+    g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.4f));
+    g.drawRoundedRectangle(headerArea.reduced(1), 6.0f, 1.0f);
+
+    // Intensiverer Text-Glow für CHORUS
+    g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.5f));
+
+    // Haupttext mit leichtem Schatten-Effekt
+    g.setColour(juce::Colour(0xff0a0f1c).withAlpha(0.4f)); // Schatten
+    g.drawText("REVERB", headerArea.translated(1, 1), juce::Justification::centred);
+
+    g.setColour(juce::Colour(0xffc5d1de)); // Haupttext
+    g.drawText("REVERB", headerArea, juce::Justification::centred);
+
+    // Optionale mystische Akzente in den Ecken des Content-Bereichs
+    auto cornerSize = 15.0f;
+    auto cornerAlpha = 0.05f;
+
+    // Lichteffekte in den Ecken
+    auto cornerGlow = juce::ColourGradient(
+        juce::Colour(0xff64b5f6).withAlpha(cornerAlpha), 0, 0,
+        juce::Colours::transparentBlack, cornerSize, cornerSize,
+        true
+    );
+
+    g.setGradientFill(cornerGlow);
+    // Obere linke Ecke
+    g.fillEllipse(contentArea.getTopLeft().x, contentArea.getTopLeft().y, cornerSize, cornerSize);
+    // Obere rechte Ecke
+    g.fillEllipse(contentArea.getTopRight().x - cornerSize, contentArea.getTopRight().y, cornerSize, cornerSize);
+    // Untere linke Ecke
+    g.fillEllipse(contentArea.getBottomLeft().x, contentArea.getBottomLeft().y - cornerSize, cornerSize, cornerSize);
+    // Untere rechte Ecke
+    g.fillEllipse(contentArea.getBottomRight().x - cornerSize, contentArea.getBottomRight().y - cornerSize, cornerSize, cornerSize);
+
+    // Subtile innere Highlightlinie
+    g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.15f));
+    g.drawRoundedRectangle(area.reduced(3), 6.0f, 1.0f);
 }
 
 void ReverbComponent::resized()

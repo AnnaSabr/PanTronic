@@ -311,7 +311,6 @@ void AvSynthAudioProcessorEditor::resized() {
     adsrLabel.setText("ADSR Envelope", juce::dontSendNotification);
     adsrLabel.attachToComponent(&adsrComponent, true);
 
-    reverbLabel.setText("Reverb", juce::dontSendNotification);
     reverbLabel.attachToComponent(&reverbComponent, true);
 
     chorusLabel.setText("Chorus Effect", juce::dontSendNotification);

@@ -38,7 +38,6 @@ public:
     // Window background
     void drawResizableFrame(juce::Graphics& g, int w, int h, const juce::BorderSize<int>& border) override;
 
-    // Note: MidiKeyboardComponent background wird nicht über LookAndFeel angepasst
     // Die Keyboard-Farben werden direkt auf der Komponente gesetzt
 
 private:
