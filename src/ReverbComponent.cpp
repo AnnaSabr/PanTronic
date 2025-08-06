@@ -1,5 +1,24 @@
+/**
+ * @file ReverbComponent.cpp
+ * @brief Implementation of the reverb control component
+ *
+ * This file contains the implementation of the ReverbComponent class methods,
+ * including initialization, layout, and event handling for reverb controls.
+ *
+ * @author AvSynth Development Team
+ * @version 1.0
+ * @date 2024
+ */
+
 #include "ReverbComponent.hpp"
 
+/**
+ * @brief Constructor implementation for ReverbComponent
+ *
+ * Initializes all five reverb parameter sliders with appropriate ranges,
+ * default values, and styling. Sets up corresponding labels and connects
+ * value change callbacks for real-time parameter updates.
+ */
 ReverbComponent::ReverbComponent()
 {
     // Room Size Knob Setup
@@ -68,38 +87,52 @@ ReverbComponent::ReverbComponent()
     addAndMakeVisible(widthLabel);
 }
 
+/**
+ * @brief Destructor implementation for ReverbComponent
+ */
 ReverbComponent::~ReverbComponent(){
 }
 
+/**
+ * @brief Paint method implementation with mystical-themed graphics
+ *
+ * Creates a visually appealing interface with:
+ * - Gradient backgrounds with mystical blue and purple colors
+ * - Glow effects around the component border
+ * - A prominent "REVERB" title with text shadow effects
+ * - Corner highlight effects for added visual interest
+ *
+ * @param g Graphics context for custom drawing operations
+ */
 void ReverbComponent::paint(juce::Graphics& g) {
     auto area = getLocalBounds().toFloat();
     auto headerArea = area.removeFromTop(25);
     auto contentArea = area.reduced(5);
 
-    // Mystischer Hintergrund mit Verlauf
+    // Mystical background with gradient
     auto backgroundGradient = juce::ColourGradient(
-        juce::Colour(0xff1a2332).brighter(0.1f), 0, 0,           // Mittleres Blau oben
-        juce::Colour(0xff0a0f1c).darker(0.1f), 0, getHeight(),   // Dunkles Blau unten
+        juce::Colour(0xff1a2332).brighter(0.1f), 0, 0,           // Medium blue at top
+        juce::Colour(0xff0a0f1c).darker(0.1f), 0, getHeight(),   // Dark blue at bottom
         false
     );
-    // Mystischen Lila-Akzent in der Mitte hinzufügen
+    // Add mystical purple accent in the middle
     backgroundGradient.addColour(0.5, juce::Colour(0xff4a3472).withAlpha(0.15f));
 
     g.setGradientFill(backgroundGradient);
     g.fillRoundedRectangle(area.reduced(1), 8.0f);
 
-    // Subtiler Glow-Effekt um die gesamte Komponente
+    // Subtle glow effect around the entire component
     for (float i = 3.0f; i > 0; i -= 0.5f) {
         auto alpha = (3.0f - i) / 3.0f * 0.08f;
         g.setColour(juce::Colour(0xff64b5f6).withAlpha(alpha));
         g.drawRoundedRectangle(area.expanded(i), 8.0f + i, 1.0f);
     }
 
-    // Hauptumrandung mit mystischem Glow
+    // Main border with mystical glow
     g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.6f));
     g.drawRoundedRectangle(area.reduced(1), 8.0f, 1.5f);
 
-    // Header-Bereich mit eigenem Verlauf
+    // Header area with its own gradient
     auto headerGradient = juce::ColourGradient(
         juce::Colour(0xff4a3472).withAlpha(0.3f), headerArea.getTopLeft(),
         juce::Colour(0xff64b5f6).withAlpha(0.1f), headerArea.getBottomRight(),
@@ -108,25 +141,25 @@ void ReverbComponent::paint(juce::Graphics& g) {
     g.setGradientFill(headerGradient);
     g.fillRoundedRectangle(headerArea.reduced(1), 6.0f);
 
-    // Header-Umrandung
+    // Header border
     g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.4f));
     g.drawRoundedRectangle(headerArea.reduced(1), 6.0f, 1.0f);
 
-    // Intensiverer Text-Glow für CHORUS
+    // Intense text glow for REVERB
     g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.5f));
 
-    // Haupttext mit leichtem Schatten-Effekt
-    g.setColour(juce::Colour(0xff0a0f1c).withAlpha(0.4f)); // Schatten
+    // Main text with subtle shadow effect
+    g.setColour(juce::Colour(0xff0a0f1c).withAlpha(0.4f)); // Shadow
     g.drawText("REVERB", headerArea.translated(1, 1), juce::Justification::centred);
 
-    g.setColour(juce::Colour(0xffc5d1de)); // Haupttext
+    g.setColour(juce::Colour(0xffc5d1de)); // Main text
     g.drawText("REVERB", headerArea, juce::Justification::centred);
 
-    // Optionale mystische Akzente in den Ecken des Content-Bereichs
+    // Optional mystical accents in the corners of the content area
     auto cornerSize = 15.0f;
     auto cornerAlpha = 0.05f;
 
-    // Lichteffekte in den Ecken
+    // Light effects in the corners
     auto cornerGlow = juce::ColourGradient(
         juce::Colour(0xff64b5f6).withAlpha(cornerAlpha), 0, 0,
         juce::Colours::transparentBlack, cornerSize, cornerSize,
@@ -134,20 +167,27 @@ void ReverbComponent::paint(juce::Graphics& g) {
     );
 
     g.setGradientFill(cornerGlow);
-    // Obere linke Ecke
+    // Top left corner
     g.fillEllipse(contentArea.getTopLeft().x, contentArea.getTopLeft().y, cornerSize, cornerSize);
-    // Obere rechte Ecke
+    // Top right corner
     g.fillEllipse(contentArea.getTopRight().x - cornerSize, contentArea.getTopRight().y, cornerSize, cornerSize);
-    // Untere linke Ecke
+    // Bottom left corner
     g.fillEllipse(contentArea.getBottomLeft().x, contentArea.getBottomLeft().y - cornerSize, cornerSize, cornerSize);
-    // Untere rechte Ecke
+    // Bottom right corner
     g.fillEllipse(contentArea.getBottomRight().x - cornerSize, contentArea.getBottomRight().y - cornerSize, cornerSize, cornerSize);
 
-    // Subtile innere Highlightlinie
+    // Subtle inner highlight line
     g.setColour(juce::Colour(0xff64b5f6).withAlpha(0.15f));
     g.drawRoundedRectangle(area.reduced(3), 6.0f, 1.0f);
 }
 
+/**
+ * @brief Resized method implementation for component layout
+ *
+ * Arranges the five reverb control sliders and their labels in a horizontal
+ * layout. Each slider gets an equal portion of the available width, with
+ * labels positioned below their corresponding sliders.
+ */
 void ReverbComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(10);
@@ -181,31 +221,58 @@ void ReverbComponent::resized()
     widthSlider.setBounds(widthArea);
 }
 
+/**
+ * @brief Sets the room size parameter value without triggering callbacks
+ * @param roomSize Room size value (0.0 to 1.0)
+ */
 void ReverbComponent::setRoomSize(float roomSize)
 {
     roomSizeSlider.setValue(roomSize, juce::dontSendNotification);
 }
 
+/**
+ * @brief Sets the damping parameter value without triggering callbacks
+ * @param damping Damping value (0.0 to 1.0)
+ */
 void ReverbComponent::setDamping(float damping)
 {
     dampingSlider.setValue(damping, juce::dontSendNotification);
 }
 
+/**
+ * @brief Sets the wet level parameter value without triggering callbacks
+ * @param wetLevel Wet level value (0.0 to 1.0)
+ */
 void ReverbComponent::setWetLevel(float wetLevel)
 {
     wetLevelSlider.setValue(wetLevel, juce::dontSendNotification);
 }
 
+/**
+ * @brief Sets the dry level parameter value without triggering callbacks
+ * @param dryLevel Dry level value (0.0 to 1.0)
+ */
 void ReverbComponent::setDryLevel(float dryLevel)
 {
     dryLevelSlider.setValue(dryLevel, juce::dontSendNotification);
 }
 
+/**
+ * @brief Sets the width parameter value without triggering callbacks
+ * @param width Stereo width value (0.0 to 1.0)
+ */
 void ReverbComponent::setWidth(float width)
 {
     widthSlider.setValue(width, juce::dontSendNotification);
 }
 
+/**
+ * @brief Internal parameter change handler
+ *
+ * Called whenever any slider value changes. Collects all current parameter
+ * values and invokes the onParameterChanged callback function if it has been
+ * registered by the parent component.
+ */
 void ReverbComponent::parameterChanged()
 {
     if (onParameterChanged)

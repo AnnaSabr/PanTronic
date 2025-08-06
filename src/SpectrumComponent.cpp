@@ -1,5 +1,26 @@
+/**
+ * @file SpectrumComponent.cpp
+ * @brief Implementation of real-time spectrum analyzer component
+ *
+ * This file contains the implementation of the SpectrumComponent class methods,
+ * including FFT processing, spectrum visualization, and real-time updates.
+ *
+ * @author AvSynth Development Team
+ * @version 1.0
+ * @date 2024
+ */
+
 #include "SpectrumComponent.hpp"
 
+/**
+ * @brief Constructor implementation for SpectrumComponent
+ *
+ * Initializes the FFT processor with the specified order, creates a Hann windowing
+ * function, zeros out all data buffers, and starts the 60 FPS update timer.
+ *
+ * @param buffer Reference to the audio buffer to analyze
+ * @param writePos Reference to the current write position in the buffer
+ */
 SpectrumComponent::SpectrumComponent(juce::AudioBuffer<float>& buffer, int& writePos)
     : audioBuffer(buffer), bufferWritePos(writePos), forwardFFT(fftOrder), window(fftSize, juce::dsp::WindowingFunction<float>::hann)
 {
@@ -12,11 +33,27 @@ SpectrumComponent::SpectrumComponent(juce::AudioBuffer<float>& buffer, int& writ
     startTimer(1000 / 60);
 }
 
+/**
+ * @brief Destructor implementation for SpectrumComponent
+ *
+ * Stops the update timer to prevent further processing.
+ */
 SpectrumComponent::~SpectrumComponent()
 {
     stopTimer();
 }
 
+/**
+ * @brief Paint method implementation for spectrum visualization
+ *
+ * Renders a complete spectrum analyzer display including:
+ * - Black background for contrast
+ * - Frequency and magnitude scales with grid lines
+ * - Light blue spectrum curve with smooth path rendering
+ * - Gradient fill beneath the spectrum curve for visual appeal
+ *
+ * @param g Graphics context for all drawing operations
+ */
 void SpectrumComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colours::black);
@@ -71,11 +108,28 @@ void SpectrumComponent::paint(juce::Graphics& g)
     g.fillPath(fillPath);
 }
 
+/**
+ * @brief Resized method implementation
+ *
+ * Currently no specific resize handling is required as the spectrum display
+ * automatically adapts to the component bounds during the paint method.
+ */
 void SpectrumComponent::resized()
 {
     // Component resized - nothing specific to do here
 }
 
+/**
+ * @brief Timer callback implementation for continuous spectrum updates
+ *
+ * This method is called 60 times per second to:
+ * - Read new audio samples from the circular buffer
+ * - Fill the FFT input buffer (FIFO)
+ * - Trigger FFT processing when enough samples are available
+ * - Update the display by calling repaint()
+ *
+ * Includes debug output to monitor audio levels and processing status.
+ */
 void SpectrumComponent::timerCallback()
 {
     // Read new audio data from the circular buffer
@@ -135,6 +189,19 @@ void SpectrumComponent::timerCallback()
     }
 }
 
+/**
+ * @brief FFT processing implementation
+ *
+ * Performs complete FFT analysis of the audio data:
+ * 1. Copies FIFO data to FFT buffer
+ * 2. Applies Hann windowing to reduce spectral leakage
+ * 3. Executes forward FFT transformation
+ * 4. Maps FFT bins to display spectrum with logarithmic frequency scaling
+ * 5. Applies temporal smoothing to reduce visual flickering
+ * 6. Normalizes magnitudes for proper display scaling
+ *
+ * Includes debug output to monitor input levels and FFT results.
+ */
 void SpectrumComponent::processFFT()
 {
     // Debug: Check input data
@@ -192,6 +259,17 @@ void SpectrumComponent::processFFT()
     firstFrame = false;
 }
 
+/**
+ * @brief Draws the frequency scale with logarithmic spacing
+ *
+ * Creates a professional frequency scale with:
+ * - Logarithmic frequency distribution (20Hz to 20kHz)
+ * - Vertical grid lines at standard frequencies
+ * - Frequency labels with appropriate formatting (Hz/kHz)
+ * - Semi-transparent white color for subtlety
+ *
+ * @param g Graphics context for drawing the frequency scale
+ */
 void SpectrumComponent::drawFrequencyScale(juce::Graphics& g)
 {
     g.setColour(juce::Colours::white.withAlpha(0.7f));
@@ -224,6 +302,17 @@ void SpectrumComponent::drawFrequencyScale(juce::Graphics& g)
     }
 }
 
+/**
+ * @brief Draws the magnitude scale in decibels
+ *
+ * Creates a linear magnitude scale with:
+ * - Range from -100dB to 0dB
+ * - Horizontal grid lines every 20dB
+ * - dB labels on the left side
+ * - Semi-transparent white color for subtlety
+ *
+ * @param g Graphics context for drawing the magnitude scale
+ */
 void SpectrumComponent::drawMagnitudeScale(juce::Graphics& g)
 {
     g.setColour(juce::Colours::white.withAlpha(0.7f));
