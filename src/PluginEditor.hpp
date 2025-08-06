@@ -1,10 +1,16 @@
 #pragma once
 
+#include "ADSRComponent.hpp"
+#include "ChorusComponent.hpp"
 #include "PluginProcessor.hpp"
+#include "ReverbComponent.hpp"
+#include "SpectrumComponent.hpp"
 #include "WaveformComponent.hpp"
+#include "MysticalLookAndFeel.hpp"
 
 //==============================================================================
-class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor {
+class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                          public juce::AudioProcessorValueTreeState::Listener {
   public:
     explicit AvSynthAudioProcessorEditor(AvSynthAudioProcessor &);
     ~AvSynthAudioProcessorEditor() override;
@@ -13,13 +19,40 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor {
     void paint(juce::Graphics &) override;
     void resized() override;
 
+    // AudioProcessorValueTreeState::Listener
+    void parameterChanged(const juce::String& parameterID, float newValue) override;
+
+    void loadFlutePreset();         // Kombinierte Methode: ADSR, Filter, Reverb
+    void setFlutePreset();          // Nur ADSR
+    void setFluteFilterPreset();    // Nur Filter
+    void setFluteReverbPreset();    // Nur Reverb
+
+    // Bild-bezogene Methoden
+    void loadMysticalImage();
+    void drawMysticalImage(juce::Graphics& g);
+
   private:
     std::vector<juce::Component *> GetComps();
+    void setupADSRComponent();
+    void setupReverbComponent();
+    SpectrumComponent spectrumComponent;
 
   private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     AvSynthAudioProcessor &processorRef;
+
+    juce::Label gainLabel;
+    juce::Label frequencyLabel;
+    juce::Label oscTypeLabel;
+    juce::Label lowCutFreqLabel;
+    juce::Label highCutFreqLabel;
+    juce::Label adsrLabel;
+    juce::Label reverbLabel;
+
+    juce::Label chorusLabel;
+
+    juce::Label spectrumLabel;
 
     juce::Slider gainSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment gainAttachment;
@@ -31,6 +64,27 @@ class AvSynthAudioProcessorEditor final : public juce::AudioProcessorEditor {
     juce::AudioProcessorValueTreeState::SliderAttachment lowCutFreqAttachment;
     juce::Slider highCutFreqSlider;
     juce::AudioProcessorValueTreeState::SliderAttachment highCutFreqAttachment;
+
+    // Neuer Member für das mystische Bild
+    juce::Image mysticalImage;
+    MysticalLookAndFeel mysticalLookAndFeel;
+
+
+    void setupChorusComponent();
+
+    // ADSR Component
+    ADSRComponent adsrComponent;
+
+    // Chorus Component
+    ChorusComponent chorusComponent;
+
+    // Reverb Component
+    ReverbComponent reverbComponent;
+
+
+    // Button for the Flute Preset
+    juce::TextButton flutePresetButton;
+
     juce::MidiKeyboardComponent keyboardComponent;
     WaveformComponent waveformComponent;
 

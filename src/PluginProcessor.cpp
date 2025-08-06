@@ -1,7 +1,8 @@
 #include "PluginProcessor.hpp"
 #include "PluginEditor.hpp"
 #include "Utils.hpp"
-#include "magic_enum/magic_enum.hpp"
+#include <magic_enum/magic_enum.hpp>
+#include "ChorusEffect.hpp"
 
 /**
  * @brief Retrieves the current parameter values from the ValueTreeState
@@ -19,6 +20,25 @@ AvSynthAudioProcessor::ChainSettings::Get(const juce::AudioProcessorValueTreeSta
         static_cast<int>(parameters.getRawParameterValue(magic_enum::enum_name<Parameters::OscType>().data())->load()));
     settings.LowPassFreq = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::LowPassFreq>().data())->load();
     settings.HighPassFreq = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::HighPassFreq>().data())->load();
+
+    // Load ADSR parameters
+    settings.attack = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Attack>().data())->load();
+    settings.decay = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Decay>().data())->load();
+    settings.sustain = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Sustain>().data())->load();
+    settings.release = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::Release>().data())->load();
+
+    // Load Reverb parameters
+    settings.reverbRoomSize = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbRoomSize>().data())->load();
+    settings.reverbDamping = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDamping>().data())->load();
+    settings.reverbWetLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWetLevel>().data())->load();
+    settings.reverbDryLevel = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbDryLevel>().data())->load();
+    settings.reverbWidth = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ReverbWidth>().data())->load();
+
+    // Load Chorus parameters
+    settings.chorusRate = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusRate>().data())->load();
+    settings.chorusDepth = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusDepth>().data())->load();
+    settings.chorusFeedback = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusFeedback>().data())->load();
+    settings.chorusMix = parameters.getRawParameterValue(magic_enum::enum_name<Parameters::ChorusMix>().data())->load();
 
     return settings;
 }
@@ -89,7 +109,7 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     juce::ignoreUnused(sampleRate);
 
     previousChainSettings = ChainSettings::Get(parameters);
-    circularBuffer.setSize(1, samplesPerBlock);
+    circularBuffer.setSize(1, samplesPerBlock * 4);
 
     updateAngleDelta(previousChainSettings.frequency);
 
@@ -101,8 +121,19 @@ void AvSynthAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock
     leftChain.prepare(spec);
     rightChain.prepare(spec);
 
+    // Prepare reverb
+    reverb.prepare(spec);
+    updateReverbParameters(previousChainSettings);
+
     updateLowPassCoefficients(previousChainSettings.LowPassFreq);
     updateHighPassCoefficients(previousChainSettings.HighPassFreq);
+
+    // Initialize ADSR
+    adsr.setSampleRate(sampleRate);
+
+    // Initialize Chorus
+    chorus.prepare(spec);
+    updateChorusParameters(previousChainSettings);
 }
 
 void AvSynthAudioProcessor::releaseResources() {
@@ -148,7 +179,20 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
     // Merge keyboardComponent MIDI events into midiMessages
     keyboardState.processNextMidiBuffer(midiMessages, 0, buffer.getNumSamples(), true);
 
-    // If there is a MIDI message, process it and set the frequency to the value in the message
+    // Get current parameter values
+    const auto chainSettings = ChainSettings::Get(parameters);
+
+    // Update ADSR parameters if they have changed
+    adsrParams.attack = chainSettings.attack;
+    adsrParams.decay = chainSettings.decay;
+    adsrParams.sustain = chainSettings.sustain;
+    adsrParams.release = chainSettings.release;
+    adsr.setParameters(adsrParams);
+
+    // Update reverb parameters
+    updateReverbParameters(chainSettings);
+
+    // Process MIDI messages
     if (!midiMessages.isEmpty()) {
         for (const auto &message : midiMessages) {
             if (message.getMessage().isNoteOn()) {
@@ -161,13 +205,19 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
                     float normValue = floatParam->convertTo0to1(frequency);
                     floatParam->setValueNotifyingHost(normValue);
                 }
+
+                // Trigger ADSR note on
+                adsr.noteOn();
+                noteIsOn = true;
                 break;
+            }
+            else if (message.getMessage().isNoteOff()) {
+                // Trigger ADSR note off
+                adsr.noteOff();
+                noteIsOn = false;
             }
         }
     }
-
-    // Get current parameter values
-    const auto chainSettings = ChainSettings::Get(parameters);
 
     // Check if the frequency has changed since the last process call
     if (!juce::approximatelyEqual(previousChainSettings.frequency, chainSettings.frequency)) {
@@ -180,6 +230,10 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
             currentAngle += angleDelta;
             updateAngleDelta(frequencyRamp.getNext());
 
+            // Apply ADSR envelope
+            float envelopeValue = adsr.getNextSample();
+            currentSample *= envelopeValue;
+
             // Write the current sample to all output channels
             for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
                 buffer.getWritePointer(channel)[sample] = currentSample;
@@ -190,6 +244,11 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
         for (auto sample = 0; sample < buffer.getNumSamples(); ++sample) {
             auto currentSample = getOscSample(chainSettings.oscType, currentAngle);
             currentAngle += angleDelta;
+
+            // Apply ADSR envelope
+            float envelopeValue = adsr.getNextSample();
+            currentSample *= envelopeValue;
+
             // Write the current sample to all output channels
             for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
                 buffer.getWritePointer(channel)[sample] = currentSample;
@@ -211,6 +270,15 @@ void AvSynthAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer, juce:
 
     leftChain.process(leftContext);
     rightChain.process(rightContext);
+
+    // Update Chorus parameters if they have changed
+    updateChorusParameters(chainSettings);
+    // Apply Chorus effect
+    chorus.processBlock(buffer);
+
+    // Apply reverb effect
+    juce::dsp::ProcessContextReplacing<float> reverbContext(block);
+    reverb.process(reverbContext);
 
     if (juce::approximatelyEqual(chainSettings.gain, previousChainSettings.gain)) {
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
@@ -271,6 +339,22 @@ void AvSynthAudioProcessor::updateAngleDelta(float frequency) {
     angleDelta = cyclesPerSample * juce::MathConstants<double>::twoPi;
 }
 
+float AvSynthAudioProcessor::getFluteWaveform(double angle) {
+    // Grundton (fundamental)
+    float fundamental = static_cast<float>(std::sin(angle));
+
+    // Charakteristische Flöten-Obertöne (hauptsächlich ungerade Harmonische)
+    float harmonic2 = 0.3f * static_cast<float>(std::sin(2.0 * angle));  // Oktave (schwach)
+    float harmonic3 = 0.15f * static_cast<float>(std::sin(3.0 * angle)); // Quinte
+    float harmonic4 = 0.05f * static_cast<float>(std::sin(4.0 * angle)); // Doppel-Oktave (sehr schwach)
+    float harmonic5 = 0.08f * static_cast<float>(std::sin(5.0 * angle)); // Große Terz über Doppel-Oktave
+
+    // Leichte Modulation für "Breath"-Effekt
+    float breathModulation = 1.0f + 0.02f * static_cast<float>(std::sin(angle * 0.1));
+
+    return (fundamental + harmonic2 + harmonic3 + harmonic4 + harmonic5) * breathModulation * 0.8f;
+}
+
 float AvSynthAudioProcessor::getOscSample(OscType type, double angle) {
     switch (type) {
     case OscType::Sine:
@@ -284,10 +368,14 @@ float AvSynthAudioProcessor::getOscSample(OscType type, double angle) {
         return 2.0f * static_cast<float>(std::abs(2.0f * (angle / juce::MathConstants<double>::twoPi -
                                                           std::floor(0.5 + angle / juce::MathConstants<double>::twoPi)))) -
                1.0f;
+    case OscType::Flute:
+        // Flöten-ähnliche Wellenform mit charakteristischen Obertönen
+        return getFluteWaveform(angle);
     default:
         return 0.0f;
     }
 }
+
 void AvSynthAudioProcessor::updateHighPassCoefficients(float frequency) {
     auto highPassCoefficients =
         juce::dsp::FilterDesign<float>::designIIRHighpassHighOrderButterworthMethod(frequency, getSampleRate(), 4);
@@ -314,6 +402,24 @@ void AvSynthAudioProcessor::updateLowPassCoefficients(float frequency) {
     *rightLowPass.get<1>().coefficients = *lowPassCoefficients[1];
 }
 
+void AvSynthAudioProcessor::updateChorusParameters(const ChainSettings& settings) {
+    chorus.setRate(settings.chorusRate);
+    chorus.setDepth(settings.chorusDepth);
+    chorus.setFeedback(settings.chorusFeedback);
+    chorus.setMix(settings.chorusMix);
+}
+
+void AvSynthAudioProcessor::updateReverbParameters(const ChainSettings& settings) {
+    reverbParams.roomSize = settings.reverbRoomSize;
+    reverbParams.damping = settings.reverbDamping;
+    reverbParams.wetLevel = settings.reverbWetLevel;
+    reverbParams.dryLevel = settings.reverbDryLevel;
+    reverbParams.width = settings.reverbWidth;
+    reverbParams.freezeMode = 0.0f; // Keep this at 0 for normal operation
+
+    reverb.setParameters(reverbParams);
+}
+
 template <typename ParamT, AvSynthAudioProcessor::Parameters Param, typename... Args>
 static std::unique_ptr<ParamT> makeParameter(Args &&...args) {
     return std::make_unique<ParamT>(magic_enum::enum_name<Param>().data(), magic_enum::enum_name<Param>().data(),
@@ -338,6 +444,48 @@ juce::AudioProcessorValueTreeState::ParameterLayout AvSynthAudioProcessor::creat
         juce::StringArray{magic_enum::enum_name<OscType::Sine>().data(), magic_enum::enum_name<OscType::Saw>().data(),
                           magic_enum::enum_name<OscType::Square>().data(), magic_enum::enum_name<OscType::Triangle>().data()},
         0));
+
+    // ADSR Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Attack>(
+        juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.1f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Decay>(
+        juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.1f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Sustain>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.7f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::Release>(
+        juce::NormalisableRange(0.001f, 5.0f, 0.001f, 0.3f), 0.3f));
+
+    // Reverb Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbRoomSize>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbDamping>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWetLevel>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.33f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbDryLevel>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.4f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ReverbWidth>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 1.0f));
+
+    // Chorus Parameters
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusRate>(
+        juce::NormalisableRange(0.1f, 10.0f, 0.1f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusDepth>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusFeedback>(
+        juce::NormalisableRange(0.0f, 0.95f, 0.01f), 0.3f));
+
+    layout.add(makeParameter<juce::AudioParameterFloat, Parameters::ChorusMix>(
+        juce::NormalisableRange(0.0f, 1.0f, 0.01f), 0.5f));
 
     return layout;
 }

@@ -2,15 +2,21 @@
 
 #include "JuceHeader.h"
 #include "juce_dsp/juce_dsp.h"
-#include "juce_graphics/fonts/harfbuzz/OT/Layout/GSUB/AlternateSet.hh"
+#include "ChorusEffect.hpp"
 
 //==============================================================================
 class AvSynthAudioProcessor final : public juce::AudioProcessor {
     friend class AvSynthAudioProcessorEditor;
 
   public:
-    enum class Parameters { Gain, Frequency, OscType, LowPassFreq, HighPassFreq, NumParameters };
-    enum class OscType { Sine, Square, Saw, Triangle, NumTypes };
+    enum class Parameters {
+        Gain, Frequency, OscType, LowPassFreq, HighPassFreq,
+        Attack, Decay, Sustain, Release,
+        ReverbRoomSize, ReverbDamping, ReverbWetLevel, ReverbDryLevel, ReverbWidth,
+        ChorusRate, ChorusDepth, ChorusFeedback, ChorusMix,
+        NumParameters
+    };
+    enum class OscType { Sine, Square, Saw, Triangle, Flute, NumTypes};
 
     struct ChainSettings {
         float gain = 0.25f;
@@ -18,6 +24,22 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
         OscType oscType = OscType::Sine;
         float LowPassFreq = 20000.0f;
         float HighPassFreq = 20.0f;
+        float attack = 0.1f;
+        float decay = 0.1f;
+        float sustain = 0.7f;
+        float release = 0.3f;
+        //Reverb parameters
+        float reverbRoomSize = 0.5f;
+        float reverbDamping = 0.5f;
+        float reverbWetLevel = 0.33f;
+        float reverbDryLevel = 0.4f;
+        float reverbWidth = 1.0f;
+
+        // Chorus parameters
+        float chorusRate = 0.5f;
+        float chorusDepth = 0.5f;
+        float chorusFeedback = 0.3f;
+        float chorusMix = 0.5f;
 
         static forcedinline ChainSettings Get(const juce::AudioProcessorValueTreeState &parameters);
     };
@@ -62,9 +84,12 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     void updateAngleDelta(float frequency);
 
     static float getOscSample(OscType type, double angle);
+    static float getFluteWaveform(double angle);
 
     void updateHighPassCoefficients(float frequency);
     void updateLowPassCoefficients(float frequency);
+    void updateReverbParameters(const ChainSettings& settings);
+    void updateChorusParameters(const ChainSettings& settings);  // Add this declaration
 
   private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -88,6 +113,18 @@ class AvSynthAudioProcessor final : public juce::AudioProcessor {
     MonoChain leftChain, rightChain;
 
     double currentAngle = 0.0, angleDelta = 0.0;
+
+    // ADSR Envelope
+    juce::ADSR adsr;
+    juce::ADSR::Parameters adsrParams;
+    bool noteIsOn = false;
+
+    // Reverb
+    juce::dsp::Reverb reverb;
+    juce::dsp::Reverb::Parameters reverbParams;
+
+    // Chorus Effect - Add this member variable
+    ChorusEffect chorus;
 
   private:
     //==============================================================================
